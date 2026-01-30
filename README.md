@@ -34,18 +34,23 @@ Or you can use it as walkthrough to build your own.
     - cd frontend
     - npm install
 
-### build astro and run webserver
+### build astro and run local webserver
 
 You can now build html files from your astro project
 - cd frontend
-- spin up a **dev**eloper webserver whilst working on your files:
-  - `npm run dev` this will...
-  - spin up webserver on http://localhost:4321/
-  - ~~will open browser~~
-- finally, build your static website
-  - `npm run build`
-  - will store into "dist", which is ignored through [gitignore]
-  - in our setup, we will not store the ou tput files in the repo but sync them manually OR generate it remote using a pipeline.
+
+spin up an auto-refreshing **dev**eloper webserver, reflecting the current state of your src:
+- `npm run dev` this will...
+- spin up webserver on http://localhost:4321/
+- ~~will open browser~~
+
+finally, build your static website
+- `npm run build`
+- will store into "dist", which is ignored through [gitignore]
+- in our setup, we will not store the ou tput files in the repo but sync them manually OR generate it remote using a pipeline.
+
+start a static webserver for the "dist" directory, ignoring src changes:
+- `npm run preview`
 
 ---
 
