@@ -1,6 +1,15 @@
 # aws-astro-headless-cms-deployment
 deployment part of website
-This readme will mainly serve as documentation and optionally as guided landing page for this project
+This readme will mainly serve as documentation and optionally as guided landing page for this project.
+
+You can clone this repo for a template of deploying a SSG website on AWS.
+Or you can use it as walkthrough to build your own.
+
+## directory structure
+
+- frontend ontains the astro static site generator (ssg) project
+- cloudformation for provisioning AWS infrastructure
+- doc example files
 
 ## scafffold Astro (if not cloning this repo)
 
@@ -10,19 +19,21 @@ This readme will mainly serve as documentation and optionally as guided landing 
 - cd into repo dir
 - `npm create astro@latest -- --template blog frontend`
   - will generate an [astro] project
-  - in case npm depency installation fails
+  - in case npm depency installation fails, close your loud sync, give your virus scanner 1-2 minutes (it probably checks npm_nodes) and run:
     - cd frontend
     - npm install
-
 
 ### build astro and run webserver
 
 You can now build html files from your astro project
 - cd frontend
-- npm run dev
-  - build output
-  - spin up webserver
-  - open browser
+- spin up a **dev**eloper webserver whilst working on your files:
+  - `npm run dev` this will...
+  - spin up webserver on http://localhost:4321/
+  - ~~will open browser~~
+- build your static website
+  - `npm run build`
+  - will store into "dist", which is ignored through [gitignore]
 
 ---
 
@@ -70,11 +81,15 @@ It does not follo the [Integration Guide][integrate] since we do not use its Saa
 ## links
 
 
-[patchfile]: ./doc/integrate_strapi_into_astro.patch "Patchfile"
 [integrate]: https://strapi.io/integrations "strapi.io/integrations"
 [themes]: https://astro.build/themes/1/?search=&price%5B%5D=free "Free Astro Starter Themes"
 [astro]: https://astro.build/ "astro static site generator"
 [strapi]: https://strapi.io/ "Strapi CMS - SaaS or selfhosted"
+
+[patchfile]: ./doc/integrate_strapi_into_astro.patch "Patchfile"
+[frontend]: ./frontend/ "frontend"
+[gitignore]: ./frontend/.gitignore "frontend/.gitignore"
+[dist]: ./frontend/dist/ "static website generated(built) by astro using `npm run build`"
 
 [repolink]: https://github.com/Codingschule/aws-astro-headless-cms-deployment "Internal link to this repository"
 [matt]: https://github.com/yasuoiwakura "Matthias Block" 
