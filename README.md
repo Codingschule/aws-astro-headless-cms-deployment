@@ -11,6 +11,16 @@ This readme will mainly serve as documentation and optionally as guided landing 
 - `npm create astro@latest -- --template blog frontend`
   - will generate an [astro] project
 
+
+### build astro and run webserver
+
+You can now build html files from your astro project
+- cd frontend
+- npm run dev
+  - build output
+  - spin up webserver
+  - open browser
+
 ---
 
 ## strapi (out of scope of this project)
