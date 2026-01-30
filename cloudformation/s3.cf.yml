@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/awslabs/goformation/v4/schema/cloudformation.schema.json
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  AppName: 
+    Type: String
+    Default: "cs-itp-ssg-cd"
+
+Resources:
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AppName}-${AWS::Region}-${AWS::AccountId}"
+      # PublicAccessBlockConfiguration:
+      #   BlockPublicAcls: false
+      #   BlockPublicPolicy: false
+      #   IgnorePublicAcls: false
+      #   RestrictPublicBuckets: false
+      # WebsiteConfiguration: # https://docs.aws.amazon.com/AmazonS3/latest/userguide/HostingWebsiteOnS3Setup.html
+      #   IndexDocument: index.html
+        # ErrorDocument: error.html
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # WebsiteBucketPolicy:
+  #   Type: AWS::S3::BucketPolicy
+  #   Properties:
+  #     Bucket: !Ref WebsiteBucket
+  #     PolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Sid: PublicReadGetObject
+  #           Effect: Allow
+  #           Principal: "*"
+  #           Action: s3:GetObject
+  #           Resource: !Sub "arn:aws:s3:::${WebsiteBucket}/*"
+
+Outputs:
+  # SiteURL:
+  #   Value: !Sub "http://${WebsiteBucket}.s3-website-${AWS::Region}.amazonaws.com" 
+  BucketNameWebsitePublic:
+    Value: !Sub "${WebsiteBucket}" 
+  DebugSyncCommand:
+    Value: !Sub "aws s3 sync ../website s3://${WebsiteBucket} --profile=kodekloud" 
