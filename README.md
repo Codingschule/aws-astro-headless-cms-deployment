@@ -10,6 +10,9 @@ This readme will mainly serve as documentation and optionally as guided landing 
 - cd into repo dir
 - `npm create astro@latest -- --template blog frontend`
   - will generate an [astro] project
+  - in case npm depency installation fails
+    - cd frontend
+    - npm install
 
 ---
 
