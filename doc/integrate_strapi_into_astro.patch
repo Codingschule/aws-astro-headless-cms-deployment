@@ -1,0 +1,244 @@
+commit 3e25e966d5753fe59768811cbb31ddaf35f64859
+Author: yasuoiwakura <8234100+yasuoiwakura@users.noreply.github.com>
+Date:   Thu Jan 29 14:09:11 2026 +0100
+
+    integrate strapi into astro
+
+diff --git a/frontend-astro/.env.local b/frontend-astro/.env.local
+new file mode 100644
+index 0000000..96d6854
+--- /dev/null
++++ b/frontend-astro/.env.local
+@@ -0,0 +1 @@
++STRAPI_URL=http://localhost:1337
+\ No newline at end of file
+diff --git a/frontend-astro/src/layouts/Layout.astro b/frontend-astro/src/layouts/Layout.astro
+new file mode 100644
+index 0000000..268046d
+--- /dev/null
++++ b/frontend-astro/src/layouts/Layout.astro
+@@ -0,0 +1,25 @@
++---
++import BaseHead from '../components/BaseHead.astro';
++import Header from '../components/Header.astro';
++import Footer from '../components/Footer.astro';
++import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
++
++interface Props {
++    title?: string;
++    description?: string;
++}
++
++const { title = SITE_TITLE, description = SITE_DESCRIPTION } = Astro.props;
++---
++
++<!doctype html>
++<html lang="en">
++    <head>
++        <BaseHead title={title} description={description} />
++    </head>
++    <body>
++        <Header />
++        <slot />
++        <Footer />
++    </body>
++</html>
+\ No newline at end of file
+diff --git a/frontend-astro/src/pages/index.astro b/frontend-astro/src/pages/index.astro
+index da55ea6..cf354fc 100644
+--- a/frontend-astro/src/pages/index.astro
++++ b/frontend-astro/src/pages/index.astro
+@@ -1,49 +1,40 @@
+ ---
+-import BaseHead from '../components/BaseHead.astro';
+-import Footer from '../components/Footer.astro';
+-import Header from '../components/Header.astro';
+-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
++import Layout from "../layouts/Layout.astro";
++import type { ArticlesResponse } from "../types/strapi";
++
++// const STRAPI_URL = "http://localhost:1337";
++
++// const response = await fetch(`${STRAPI_URL}/api/articles?populate=*`);
++const response = await fetch(`${import.meta.env.STRAPI_URL}/api/articles?populate=*`,
++);
++
++const { data: articles }: ArticlesResponse = await response.json();
+ ---
+ 
+-<!doctype html>
+-<html lang="en">
+-	<head>
+-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+-	</head>
+-	<body>
+-		<Header />
+-		<main>
+-			<h1>🧑‍🚀 Hello, Astronaut!</h1>
+-			<p>
+-				Welcome to the official <a href="https://astro.build/">Astro</a> blog starter template. This template
+-				serves as a lightweight, minimally-styled starting point for anyone looking to build a personal
+-				website, blog, or portfolio with Astro.
+-			</p>
+-			<p>
+-				This template comes with a few integrations already configured in your
+-				<code>astro.config.mjs</code> file. You can customize your setup with
+-				<a href="https://astro.build/integrations">Astro Integrations</a> to add tools like Tailwind,
+-				React, or Vue to your project.
+-			</p>
+-			<p>Here are a few ideas on how to get started with the template:</p>
+-			<ul>
+-				<li>Edit this page in <code>src/pages/index.astro</code></li>
+-				<li>Edit the site header items in <code>src/components/Header.astro</code></li>
+-				<li>Add your name to the footer in <code>src/components/Footer.astro</code></li>
+-				<li>Check out the included blog posts in <code>src/content/blog/</code></li>
+-				<li>Customize the blog post page layout in <code>src/layouts/BlogPost.astro</code></li>
+-			</ul>
+-			<p>
+-				Have fun! If you get stuck, remember to
+-				<a href="https://docs.astro.build/">read the docs</a>
+-				or <a href="https://astro.build/chat">join us on Discord</a> to ask questions.
+-			</p>
+-			<p>
+-				Looking for a blog template with a bit more personality? Check out
+-				<a href="https://github.com/Charca/astro-blog-template">astro-blog-template</a>
+-				by <a href="https://twitter.com/Charca">Maxi Ferreira</a>.
+-			</p>
+-		</main>
+-		<Footer />
+-	</body>
+-</html>
++<Layout>
++  <main class="container mx-auto px-4 py-8">
++    <h1 class="text-4xl font-bold mb-8 text-center">Articles</h1>
++    <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
++      {articles.map((article) => (
++        <li class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
++          <img
++            src={`${import.meta.env.STRAPI_URL}${article.cover.url}`}
++            alt={article.cover.alternativeText}
++            class="w-full h-48 object-cover"
++          />
++          <div class="p-5">
++            <span class="inline-block px-3 py-1 text-xs font-semibold text-blue-600 bg-blue-100 rounded-full mb-3">
++              {article.category.name}
++            </span>
++            <h2 class="text-xl font-bold mb-2 text-gray-800">{article.title}</h2>
++            <p class="text-gray-600 text-sm mb-4 line-clamp-2">{article.description}</p>
++            <div class="flex items-center justify-between text-sm text-gray-500">
++              <span>By {article.author.name}</span>
++              <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
++            </div>
++          </div>
++        </li>
++      ))}
++    </ul>
++  </main>
++</Layout>
+\ No newline at end of file
+diff --git a/frontend-astro/src/styles/global.css b/frontend-astro/src/styles/global.css
+index d6aa450..a7c5a9d 100644
+--- a/frontend-astro/src/styles/global.css
++++ b/frontend-astro/src/styles/global.css
+@@ -3,6 +3,7 @@
+   https://github.com/HermanMartinus/bearblog/blob/297026a877bc2ab2b3bdfbd6b9f7961c350917dd/templates/styles/blog/default.css
+   License MIT: https://github.com/HermanMartinus/bearblog/blob/master/LICENSE.md
+  */
++@import "tailwindcss";
+ 
+ :root {
+ 	--accent: #2337ff;
+diff --git a/frontend-astro/src/types/strapi.ts b/frontend-astro/src/types/strapi.ts
+new file mode 100644
+index 0000000..243a589
+--- /dev/null
++++ b/frontend-astro/src/types/strapi.ts
+@@ -0,0 +1,87 @@
++interface Image {
++  id: number;
++  documentId: string;
++  name: string;
++  alternativeText: string;
++  width: number;
++  height: number;
++  url: string;
++  createdAt: string;
++  updatedAt: string;
++  publishedAt: string;
++}
++
++interface Author {
++  id: number;
++  documentId: string;
++  name: string;
++  email: string;
++  createdAt: string;
++  updatedAt: string;
++  publishedAt: string;
++}
++
++interface Category {
++  id: number;
++  documentId: string;
++  name: string;
++  slug: string;
++  description: string | null;
++  createdAt: string;
++  updatedAt: string;
++  publishedAt: string;
++}
++
++interface RichTextBlock {
++  __component: "shared.rich-text";
++  id: number;
++  body: string;
++}
++
++interface QuoteBlock {
++  __component: "shared.quote";
++  id: number;
++  title: string;
++  body: string;
++}
++
++interface MediaBlock {
++  __component: "shared.media";
++  id: number;
++}
++
++interface SliderBlock {
++  __component: "shared.slider";
++  id: number;
++}
++
++type Block = RichTextBlock | QuoteBlock | MediaBlock | SliderBlock;
++
++export interface Article {
++  id: number;
++  documentId: string;
++  title: string;
++  description: string;
++  slug: string;
++  createdAt: string;
++  updatedAt: string;
++  publishedAt: string;
++  cover: Image;
++  author: Author;
++  category: Category;
++  blocks: Block[];
++}
++
++interface Pagination {
++  page: number;
++  pageSize: number;
++  pageCount: number;
++  total: number;
++}
++
++export interface ArticlesResponse {
++  data: Article[];
++  meta: {
++    pagination: Pagination;
++  };
++}
+\ No newline at end of file
