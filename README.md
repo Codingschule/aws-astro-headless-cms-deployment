@@ -31,9 +31,10 @@ You can now build html files from your astro project
   - `npm run dev` this will...
   - spin up webserver on http://localhost:4321/
   - ~~will open browser~~
-- build your static website
+- finally, build your static website
   - `npm run build`
   - will store into "dist", which is ignored through [gitignore]
+  - in our setup, we will not store the ou tput files in the repo but sync them manually OR generate it remote using a pipeline.
 
 ---
 
