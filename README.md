@@ -5,6 +5,18 @@ This readme will mainly serve as documentation and optionally as guided landing 
 You can clone this repo for a template of deploying a SSG website on AWS.
 Or you can use it as walkthrough to build your own.
 
+## prerequisites 
+
+- install NodeJS
+- install aws cli
+- install git
+- some code editor (we use vscode, and plugins aws toolkit, git, astro)
+- be able to run a console command on cmd, powershell, bash
+  - beware: 
+    - if you run wsl-bash (default), it might not find your windows git/npm/nodejs.
+    - git for windows comes with a windows-native bash that can run your windows apps.
+
+
 ## directory structure
 
 - frontend ontains the astro static site generator (ssg) project
@@ -13,7 +25,6 @@ Or you can use it as walkthrough to build your own.
 
 ## scafffold Astro (if not cloning this repo)
 
-- install NodeJs for your OS
 - clone or create new git repo
 - choose a [theme][themes] (we go with "blog" and have a [patchfile][patchfile] for optionalle integrating strapi)
 - cd into repo dir
