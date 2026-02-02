@@ -1,3 +1,4 @@
+
 # yaml-language-server: $schema=https://raw.githubusercontent.com/awslabs/goformation/v4/schema/cloudformation.schema.json
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
@@ -46,3 +47,5 @@ Outputs:
     Value: !Sub "${MyStaticWebsiteBucket}" 
   DebugSyncCommand:
     Value: !Sub "aws s3 sync ../website s3://${MyStaticWebsiteBucket} --profile=kodekloud" 
+
+

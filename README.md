@@ -97,7 +97,6 @@ It does not follo the [Integration Guide][integrate] since we do not use its Saa
 
 ## links
 
-
 [integrate]: https://strapi.io/integrations "strapi.io/integrations"
 [themes]: https://astro.build/themes/1/?search=&price%5B%5D=free "Free Astro Starter Themes"
 [astro]: https://astro.build/ "astro static site generator"
@@ -112,6 +111,8 @@ It does not follo the [Integration Guide][integrate] since we do not use its Saa
 [matt]: https://github.com/yasuoiwakura "Matthias Block" 
 [sam]: https://github.com/hackbraten68 "Sam Dillenburg"
 
+[guide]: https://aws.amazon.com/de/cloudfront/getting-started/S3/ "Amazon CloudFront Tutorials: Setting up a"
+[Template]: https://github.com/aws-cloudformation/aws-cloudformation-templates/blob/main/S3/compliant-static-website.yaml "complete compliant-static-website.yaml"
 [calc]: https://calculator.aws/ "AWS cost calculator"
 
 <!-- 
