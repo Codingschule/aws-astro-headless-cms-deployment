@@ -1,25 +1,56 @@
 # aws-astro-headless-cms-deployment
 deployment part of website
-This readme will mainly serve as documentation and optionally as guided landing page for this project
+This readme will mainly serve as documentation and optionally as guided landing page for this project.
+
+You can clone this repo for a template of deploying a SSG website on AWS.
+Or you can use it as walkthrough to build your own.
+
+## prerequisites 
+
+- install NodeJS
+- install aws cli
+- install git
+- some code editor (we use vscode, and plugins aws toolkit, git, astro)
+- be able to run a console command on cmd, powershell, bash
+  - beware: 
+    - if you run wsl-bash (default), it might not find your windows git/npm/nodejs.
+    - git for windows comes with a windows-native bash that can run your windows apps.
+
+
+## directory structure
+
+- frontend ontains the astro static site generator (ssg) project
+- cloudformation for provisioning AWS infrastructure
+- doc example files
 
 ## scafffold Astro (if not cloning this repo)
 
-- install NodeJs for your OS
 - clone or create new git repo
 - choose a [theme][themes] (we go with "blog" and have a [patchfile][patchfile] for optionalle integrating strapi)
 - cd into repo dir
 - `npm create astro@latest -- --template blog frontend`
   - will generate an [astro] project
+  - in case npm depency installation fails, close your loud sync, give your virus scanner 1-2 minutes (it probably checks npm_nodes) and run:
+    - cd frontend
+    - npm install
 
-
-### build astro and run webserver
+### build astro and run local webserver
 
 You can now build html files from your astro project
 - cd frontend
-- npm run dev
-  - build output
-  - spin up webserver
-  - open browser
+
+spin up an auto-refreshing **dev**eloper webserver, reflecting the current state of your src:
+- `npm run dev` this will...
+- spin up webserver on http://localhost:4321/
+- ~~will open browser~~
+
+finally, build your static website
+- `npm run build`
+- will store into "dist", which is ignored through [gitignore]
+- in our setup, we will not store the ou tput files in the repo but sync them manually OR generate it remote using a pipeline.
+
+start a static webserver for the "dist" directory, ignoring src changes:
+- `npm run preview`
 
 ---
 
@@ -67,11 +98,15 @@ It does not follo the [Integration Guide][integrate] since we do not use its Saa
 ## links
 
 
-[patchfile]: ./doc/integrate_strapi_into_astro.patch "Patchfile"
 [integrate]: https://strapi.io/integrations "strapi.io/integrations"
 [themes]: https://astro.build/themes/1/?search=&price%5B%5D=free "Free Astro Starter Themes"
 [astro]: https://astro.build/ "astro static site generator"
 [strapi]: https://strapi.io/ "Strapi CMS - SaaS or selfhosted"
+
+[patchfile]: ./doc/integrate_strapi_into_astro.patch "Patchfile"
+[frontend]: ./frontend/ "frontend"
+[gitignore]: ./frontend/.gitignore "frontend/.gitignore"
+[dist]: ./frontend/dist/ "static website generated(built) by astro using `npm run build`"
 
 [repolink]: https://github.com/Codingschule/aws-astro-headless-cms-deployment "Internal link to this repository"
 [matt]: https://github.com/yasuoiwakura "Matthias Block" 
