@@ -99,8 +99,8 @@ It does not follo the [Integration Guide][integrate] since we do not use its Saa
 - [sam] Planning & Mentoring
 
 ## links and thanks
-- [AWS guide+video on S3 w/ CloudFront and (outdated) OAI][guide_cloudfront]
 
+- [AWS guide+video on S3 w/ CloudFront and (outdated) OAI][guide_cloudfront]
 
 [integrate]: https://strapi.io/integrations "strapi.io/integrations"
 [themes]: https://astro.build/themes/1/?search=&price%5B%5D=free "Free Astro Starter Themes"
@@ -116,6 +116,7 @@ It does not follo the [Integration Guide][integrate] since we do not use its Saa
 [matt]: https://github.com/yasuoiwakura "Matthias Block" 
 [sam]: https://github.com/hackbraten68 "Sam Dillenburg"
 
+[aws_oac]: https://aws.amazon.com/de/blogs/networking-and-content-delivery/amazon-cloudfront-introduces-origin-access-control-oac/ "AWS OAC INtroduction"
 [guide_s3_oac]: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html "AWS Site about S3 BucketPolicy regarding OAC and restricted access"
 [guide_cloudfront]: https://aws.amazon.com/de/cloudfront/getting-started/S3/ "Amazon CloudFront Tutorials: Setting up a CloudFrotn Distribution"
 [Template]: https://github.com/aws-cloudformation/aws-cloudformation-templates/blob/main/S3/compliant-static-website.yaml "complete compliant-static-website.yaml"
