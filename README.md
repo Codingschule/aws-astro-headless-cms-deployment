@@ -65,6 +65,7 @@ start a static webserver for the "dist" directory, ignoring src changes:
 ## provision
 
 - deploy the CloudFormation stack using console.aws.amazon.com or aws cli `aws cloudformation deploy` or (create-stack / update-stack).
+  - `aws cloudformation deploy --template-body 'file://cloudformation/cloudformation.cf.yml' --region=us-east-1 --stack-name WhatEverYouChose`
 - You should be able to verify your stack status:
 `aws cloudformation describe-stacks  --stack-name WhatEverYouChose  --query "Stacks[0].StackStatus"  --output text --region=us-east-1 --profile=myawsprofile`
   - must return **CREATE_COMPLETE**
