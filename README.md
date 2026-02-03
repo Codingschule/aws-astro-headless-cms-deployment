@@ -5,6 +5,17 @@ This readme will mainly serve as documentation and optionally as guided landing 
 You can clone this repo for a template of deploying a SSG website on AWS.
 Or you can use it as walkthrough to build your own.
 
+## AWS services used - tech stack 
+
+- AWS CloudFormation Stacks
+  - provisioning and optionally drift detection
+- AWS S3 - Simple Storage Service
+  - store website output, no public or website configuration
+- AWS CloudFront
+  - Create Distribution with OAC read access for s3 bucket to make website available worldwide
+- AWS SDK (cli) (optional)
+- AWS CloudShell (optional)
+
 ## prerequisites 
 
 - install NodeJS
@@ -50,6 +61,53 @@ finally, build your static website
 
 start a static webserver for the "dist" directory, ignoring src changes:
 - `npm run preview`
+
+## provision
+
+- deploy the CloudFormation stack using console.aws.amazon.com or aws cli `aws cloudformation deploy` or (create-stack / update-stack).
+- You should be able to verify your stack status:
+`aws cloudformation describe-stacks  --stack-name WhatEverYouChose  --query "Stacks[0].StackStatus"  --output text --region=us-east-1 --profile=myawsprofile`
+  - must return **CREATE_COMPLETE**
+- upload an index.html to the bucket or use the aws s3 command in the stack output to push your astro output manually
+
+
+## CloudFormation Outputs
+
+After successfull deploy, the CloudFOrmation output will give you hands-on information
+- CloudFrontDomainName
+  - click this to access your website (after pushing an index.html)
+- BucketNameWeb
+  - The globally unique name of the Frotnend S3 bucket. It can only be read from your CloudFront Distribution OAC and is not public. You will need it later for the CI/CD pipeline.
+- DistributionId
+  - CloudFront CDN works through so-called Distributions, you need them you "distribute" your content over the world and profit from caching etc.
+- DebugSyncCommand
+  - this might help you pushing some content into the bucket
+- BucketBlockedWebsite
+  - Since the S3 Bucket is NOT configured as website, this should return *NoSuchWebsiteConfiguration*
+- BucketBlockedUrl
+  - The PUBLIC url to your Bucket, it should return *AccessDenied*
+
+```yaml
+  BucketNameWeb:
+    Value: !Sub "${MyWebBucket}" 
+  DistributionId:
+    Value: !Sub "${CloudFrontDistribution}"
+  CloudFrontDomainName:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+  DebugSyncCommand:
+    Value: !Sub "aws s3 sync ../frontend/dist/ s3://${MyWebBucket} --profile=myawsprofile" 
+  BucketBlockedWebsite:
+    Value: !Sub "http://${MyWebBucket}.s3-website-${AWS::Region}.amazonaws.com" 
+  BucketBlockedUrl:
+    Value: !Sub "https://${MyWebBucket}.s3.${AWS::Region}.amazonaws.com"
+```
+
+## copy website into bucket
+
+aws s3 sync ./frontend/dist/ s3://cs-itp-ssg-cd-pub-dist-us-east-1-867405369211 --profile=myawsprofile
+
+
+
 
 ---
 
