@@ -70,7 +70,7 @@ start a static webserver for the "dist" directory, ignoring src changes:
 `aws cloudformation describe-stacks  --stack-name WhatEverYouChose  --query "Stacks[0].StackStatus"  --output text --region=us-east-1 --profile=myawsprofile`
   - must return **CREATE_COMPLETE**
 - upload an index.html to the bucket or use the aws s3 command in the stack output to push your astro output manually
-
+  - `aws s3 sync ./frontend/dist/ s3://${MyWebBucket} --delete --profile=myawsprofile`
 
 ## CloudFormation Outputs
 

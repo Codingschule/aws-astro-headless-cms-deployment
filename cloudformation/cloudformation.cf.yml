@@ -94,7 +94,7 @@ Outputs:
   CloudFrontDomainName:
     Value: !GetAtt CloudFrontDistribution.DomainName
   DebugSyncCommand:
-    Value: !Sub "aws s3 sync ./frontend/dist/ s3://${MyWebBucket} --profile=myawsprofile" 
+    Value: !Sub "aws s3 sync ./frontend/dist/ s3://${MyWebBucket} --delete --profile=myawsprofile" 
   BucketBlockedWebsite:
     Value: !Sub "http://${MyWebBucket}.s3-website-${AWS::Region}.amazonaws.com" 
   BucketBlockedUrl:
