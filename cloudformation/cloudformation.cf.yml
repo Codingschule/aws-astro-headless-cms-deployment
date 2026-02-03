@@ -1,4 +1,3 @@
-
 # yaml-language-server: $schema=https://raw.githubusercontent.com/awslabs/goformation/v4/schema/cloudformation.schema.json
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
@@ -85,13 +84,18 @@ Resources:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
 
-
 Outputs:
   # SiteURL:
   #   Value: !Sub "http://${MyWebBucket}.s3-website-${AWS::Region}.amazonaws.com" 
-  BucketNameStaticWebsite:
+  BucketNameWeb:
     Value: !Sub "${MyWebBucket}" 
+  DistributionId:
+    Value: !Sub "${CloudFrontDistribution}"
+  CloudFrontDomainName:
+    Value: !GetAtt CloudFrontDistribution.DomainName
   DebugSyncCommand:
-    Value: !Sub "aws s3 sync ../website s3://${MyWebBucket} --profile=kodekloud" 
-
-
+    Value: !Sub "aws s3 sync ./frontend/dist/ s3://${MyWebBucket} --profile=myawsprofile" 
+  BucketBlockedWebsite:
+    Value: !Sub "http://${MyWebBucket}.s3-website-${AWS::Region}.amazonaws.com" 
+  BucketBlockedUrl:
+    Value: !Sub "https://${MyWebBucket}.s3.${AWS::Region}.amazonaws.com"
