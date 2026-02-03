@@ -5,6 +5,17 @@ This readme will mainly serve as documentation and optionally as guided landing 
 You can clone this repo for a template of deploying a SSG website on AWS.
 Or you can use it as walkthrough to build your own.
 
+## AWS services used - tech stack 
+
+- AWS CloudFormation Stacks
+  - provisioning and optionally drift detection
+- AWS S3 - Simple Storage Service
+  - store website output, no public or website configuration
+- AWS CloudFront
+  - Create Distribution with OAC read access for s3 bucket to make website available worldwide
+- AWS SDK (cli) (optional)
+- AWS CloudShell (optional)
+
 ## prerequisites 
 
 - install NodeJS
@@ -15,7 +26,6 @@ Or you can use it as walkthrough to build your own.
   - beware: 
     - if you run wsl-bash (default), it might not find your windows git/npm/nodejs.
     - git for windows comes with a windows-native bash that can run your windows apps.
-
 
 ## directory structure
 
@@ -51,6 +61,54 @@ finally, build your static website
 
 start a static webserver for the "dist" directory, ignoring src changes:
 - `npm run preview`
+
+## provision
+
+- deploy the CloudFormation stack using console.aws.amazon.com or aws cli `aws cloudformation deploy` or (create-stack / update-stack).
+  - `aws cloudformation deploy --template-body 'file://cloudformation/cloudformation.cf.yml' --region=us-east-1 --stack-name WhatEverYouChose`
+- You should be able to verify your stack status:
+`aws cloudformation describe-stacks  --stack-name WhatEverYouChose  --query "Stacks[0].StackStatus"  --output text --region=us-east-1 --profile=myawsprofile`
+  - must return **CREATE_COMPLETE**
+- upload an index.html to the bucket or use the aws s3 command in the stack output to push your astro output manually
+  - `aws s3 sync ./frontend/dist/ s3://${MyWebBucket} --delete --profile=myawsprofile`
+
+## CloudFormation Outputs
+
+After successfull deploy, the CloudFOrmation output will give you hands-on information
+- CloudFrontDomainName
+  - click this to access your website (after pushing an index.html)
+- BucketNameWeb
+  - The globally unique name of the Frotnend S3 bucket. It can only be read from your CloudFront Distribution OAC and is not public. You will need it later for the CI/CD pipeline.
+- DistributionId
+  - CloudFront CDN works through so-called Distributions, you need them you "distribute" your content over the world and profit from caching etc.
+- DebugSyncCommand
+  - this might help you pushing some content into the bucket
+- BucketBlockedWebsite
+  - Since the S3 Bucket is NOT configured as website, this should return *NoSuchWebsiteConfiguration*
+- BucketBlockedUrl
+  - The PUBLIC url to your Bucket, it should return *AccessDenied*
+
+```yaml
+  BucketNameWeb:
+    Value: !Sub "${MyWebBucket}" 
+  DistributionId:
+    Value: !Sub "${CloudFrontDistribution}"
+  CloudFrontDomainName:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+  DebugSyncCommand:
+    Value: !Sub "aws s3 sync ../frontend/dist/ s3://${MyWebBucket} --profile=myawsprofile" 
+  BucketBlockedWebsite:
+    Value: !Sub "http://${MyWebBucket}.s3-website-${AWS::Region}.amazonaws.com" 
+  BucketBlockedUrl:
+    Value: !Sub "https://${MyWebBucket}.s3.${AWS::Region}.amazonaws.com"
+```
+
+## copy website into bucket
+
+aws s3 sync ./frontend/dist/ s3://cs-itp-ssg-cd-pub-dist-us-east-1-867405369211 --profile=myawsprofile
+
+
+
 
 ---
 
@@ -93,10 +151,15 @@ It does not follo the [Integration Guide][integrate] since we do not use its Saa
 
 ---
 
+---
+
 ## authors
+- [matt] Code
+- [sam] Planning & Mentoring
 
-## links
+## links and thanks
 
+- [AWS guide+video on S3 w/ CloudFront and (outdated) OAI][guide_cloudfront]
 
 [integrate]: https://strapi.io/integrations "strapi.io/integrations"
 [themes]: https://astro.build/themes/1/?search=&price%5B%5D=free "Free Astro Starter Themes"
@@ -112,6 +175,10 @@ It does not follo the [Integration Guide][integrate] since we do not use its Saa
 [matt]: https://github.com/yasuoiwakura "Matthias Block" 
 [sam]: https://github.com/hackbraten68 "Sam Dillenburg"
 
+[aws_oac]: https://aws.amazon.com/de/blogs/networking-and-content-delivery/amazon-cloudfront-introduces-origin-access-control-oac/ "AWS OAC INtroduction"
+[guide_s3_oac]: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html "AWS Site about S3 BucketPolicy regarding OAC and restricted access"
+[guide_cloudfront]: https://aws.amazon.com/de/cloudfront/getting-started/S3/ "Amazon CloudFront Tutorials: Setting up a CloudFrotn Distribution"
+[Template]: https://github.com/aws-cloudformation/aws-cloudformation-templates/blob/main/S3/compliant-static-website.yaml "complete compliant-static-website.yaml"
 [calc]: https://calculator.aws/ "AWS cost calculator"
 
 <!-- 

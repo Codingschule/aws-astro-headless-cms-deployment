@@ -1,0 +1,87 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/awslabs/goformation/v4/schema/cloudformation.schema.json
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: "private S3 web bucket, CloudFront Distribution via OAI (outdated)"
+
+Parameters:
+  AppName: 
+    Type: String
+    Default: "cs-itp-s3-oai-dist"
+
+Resources:
+  MyWebBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AppName}-pub-dist-${AWS::Region}-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # CloudFront Origin Access Identity (OAI)
+  MyOAI:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "OAI for ${AppName} S3 bucket"
+
+  # CloudFront Distribution
+  MyDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: "index.html"
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt MyWebBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${MyOAI}"
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          CachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6"   # AWS Managed CachingOptimized
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+        HttpVersion: http2
+        PriceClass: PriceClass_100
+
+  # Bucket Policy um nur CloudFront OAI Zugang zu erlauben
+  BucketPolicyCloudFront:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MyWebBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontOAI
+            Effect: Allow
+            Principal:
+              CanonicalUser: !GetAtt MyOAI.S3CanonicalUserId
+            Action: "s3:GetObject"
+            Resource: !Sub "${MyWebBucket.Arn}/*"
+
+Outputs:
+  BucketNameStaticWebsite:
+    Value: !Ref MyWebBucket
+
+  MyDistributionId:
+    Value: !Ref MyDistribution
+
+  CloudFrontDomainName:
+    Value: !GetAtt MyDistribution.DomainName
+
+  DebugSyncCommand:
+    Value: !Sub "aws s3 sync ../website s3://${MyWebBucket} --profile=kodekloud"
