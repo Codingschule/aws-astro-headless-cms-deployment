@@ -1,0 +1,15 @@
+# !!! DONT DO THIS ITS WORST PRACTICE - KEYS WILL BE VISIBLE FOR EVERYONE WHO CAN VIEW THE STACK!!!
+
+# DeployUserAccessKey:
+#   Type: AWS::IAM::AccessKey
+#   Properties:
+#     UserName: !Ref DeployUser
+
+# Outputs:
+#   DeployUserAccessKeyId:
+#     Description: "IAM Access Key ID (INSECURE – do not use long-term)"
+#     Value: !Ref DeployUserAccessKey
+#
+#   DeployUserSecretAccessKey:
+#     Description: "IAM Secret Access Key (INSECURE – stored in CF state)"
+#     Value: !GetAtt DeployUserAccessKey.SecretAccessKey

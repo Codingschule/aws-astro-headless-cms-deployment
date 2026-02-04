@@ -84,34 +84,6 @@ Resources:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
 
-  DeployUser:
-    Type: AWS::IAM::User
-    Properties:
-      UserName: !Sub "${AppName}-deploy-user"
-
-  DeployUserPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: !Sub "${AppName}-deploy-policy"
-      Users:
-        - !Ref DeployUser
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - s3:PutObject
-              - s3:DeleteObject
-              - s3:ListBucket
-            Resource:
-              - !GetAtt MyWebBucket.Arn
-              - !Sub "${MyWebBucket.Arn}/*"
-          - Effect: Allow
-            Action:
-              - cloudfront:CreateInvalidation
-#           Resource: "*"  # it not working we try this
-            Resource: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
-
 Outputs:
   # SiteURL:
   #   Value: !Sub "http://${MyWebBucket}.s3-website-${AWS::Region}.amazonaws.com" 
@@ -127,8 +99,3 @@ Outputs:
     Value: !Sub "http://${MyWebBucket}.s3-website-${AWS::Region}.amazonaws.com" 
   BucketBlockedUrl:
     Value: !Sub "https://${MyWebBucket}.s3.${AWS::Region}.amazonaws.com"
-
-  CreateAccessKeyCommand:
-    Description: "Run once in CloudShell as Admin"
-    Value: !Sub |
-      aws iam create-access-key --user-name ${AppName}-deploy-user
