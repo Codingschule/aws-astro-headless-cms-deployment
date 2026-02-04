@@ -1,6 +1,44 @@
 # aws-astro-headless-cms-deployment
-deployment part of website
-This readme will mainly serve as documentation and optionally as guided landing page for this project.
+
+This project is a basic proof of concept for a static Website living in GitHub and AWS.
+Once set up, you just make changes to your website and a static generated version is deployed on CDNs worldwide as shown in [sequence diagram](#cd-continious-deployment-sequence).
+Depending on size and frequency of updates, you can run this entirely free on Github and very little aws storage cost.
+- astro static site generator (SSG)
+- stored(src) on a github repository
+- built(frontend dist) using github actions
+- stored(frontend) on aws S3 and served by aws CloudFront CDN
+- provisioned(S3 Bucket + CloudFront Distribution + DeployUser) using AWS CloudFormation
+
+The human interaction is minimized to
+- Set up once
+  - clone or fork repository once
+  - Create CloudFormation Stack once
+  - Paste a CloudShell/cli command
+  - transfer a few variables and secrets to Github repository settings
+- Update your website
+  - Change front end src
+  - Push src to your repo
+
+## How does it work?
+
+After provisioning webspace and 
+
+Astro static site generator builds your Website from yml-files.
+But instead of lbuilding and uploading the generated website per hand 
+
+- you run `npm run build` within the `/frontend` directory
+- Astro will build your static website and store it in the `/frontend/src` directory.
+
+Instead of clicking throug your webspace provider, you run the CloudFormation temaplate to create a Stack to create Webspace.
+
+- you upload the changes to your webspace
+Here's where things get different
+Instead looking for a webspace provider, uploading your website manually
+
+## Quickstart
+
+First you want to make sure you actually want an Astro website, otherwise you'd have to modify the deployment pipeline.
+So have a look at [themes] and also the [astro] features. If you want more than a Static website, you'll have to implement stuff here and there.
 
 You can clone this repo for a template of deploying a SSG website on AWS.
 Or you can use it as walkthrough to build your own.
@@ -12,12 +50,17 @@ Or you can use it as walkthrough to build your own.
 - AWS S3 - Simple Storage Service
   - store website output, no public or website configuration
 - AWS CloudFront
-  - Create Distribution with OAC read access for s3 bucket to make website available worldwide
-- AWS SDK (cli) (optional)
-- AWS CloudShell (optional)
+  - Server Website via Distribution(CSM) with OAC read access for s3 bucket to make website available worldwide
+- AWS cli
+  - used by CD pipeline
+  - or deploy stack manually
+- AWS CloudShell
+  - create access keys
+- IAM (create least-privilege aws user and access keys)
 
 ## prerequisites 
 
+- aws account wit
 - install NodeJS
 - install aws cli
 - install git
@@ -26,6 +69,66 @@ Or you can use it as walkthrough to build your own.
   - beware: 
     - if you run wsl-bash (default), it might not find your windows git/npm/nodejs.
     - git for windows comes with a windows-native bash that can run your windows apps.
+
+
+## CD (Continious Deployment) Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+
+    participant Dev as Developer
+    participant GH as GitHub Repo
+    participant GHA as GitHub Actions Runner
+    participant IAM as AWS IAM
+    participant S3 as S3 Bucket (private)
+    participant CF as CloudFront
+    participant User as End User (Browser)
+
+    %% Code Push
+    Dev->>GH: git push (branch: dev)
+
+    %% CI Trigger
+    GH->>GHA: Trigger deploy.yml workflow
+
+    %% Build Phase
+    GHA->>GH: Checkout repository
+    GHA->>GHA: npm install
+    GHA->>GHA: npm run build (Astro → dist/)
+
+    %% Auth Phase
+    GHA->>IAM: Access Key in GIthub Secrets 
+    IAM-->>GHA: Success, permissions scoped
+
+    %% Deploy Phase
+    GHA->>S3: aws s3 sync ./dist → bucket
+    S3-->>GHA: Upload / delete objects
+
+    %% Invalidation
+    GHA->>CF: CreateInvalidation for Distribution (/*)
+    CF-->>GHA: Invalidation accepted (deleting Cached files worldwide)
+
+    %% Runtime Access
+    User->>CF: HTTPS Request (index.html)
+    CF->>S3: GetObject (via OAC, SigV4)
+    S3-->>CF: Object response
+    CF-->>User: Cached content delivered
+
+```
+
+## Enhancements & Next Steps
+
+- custom sub/domain
+- refine CD trigger (manually, PR)
+- 2nd deployment for test+prod
+- implement dynamic serverless features into frontend
+- move CD to AWS pipelines
+  - no aws secrets on GH
+  - CF to provision IAM access (no copypasta)
+  - use aws roles w/sts (best practice)
+- eval: limit CloudFront invalidation to changed files or coordinate CD with TTL
+- implement headless CMS (will add complexity and replace GH repo as single source of truth)
+- evaluate weither TerraForm would include more tasks or generate complexity (state-management) without benefits
 
 ## directory structure
 
@@ -170,6 +273,7 @@ It does not follo the [Integration Guide][integrate] since we do not use its Saa
 [frontend]: ./frontend/ "frontend"
 [gitignore]: ./frontend/.gitignore "frontend/.gitignore"
 [dist]: ./frontend/dist/ "static website generated(built) by astro using `npm run build`"
+[deploy]: ./.git
 
 [repolink]: https://github.com/Codingschule/aws-astro-headless-cms-deployment "Internal link to this repository"
 [matt]: https://github.com/yasuoiwakura "Matthias Block" 
