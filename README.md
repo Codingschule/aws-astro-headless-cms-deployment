@@ -130,7 +130,6 @@ sequenceDiagram
     participant Dev as Developer
     participant GH as GitHub Repo
     participant GHA as GitHub Actions Runner
-    participant IAM as AWS IAM
     participant S3 as S3 Bucket (private)
     participant CF as CloudFront
     participant User as End User (Browser)
@@ -143,20 +142,14 @@ sequenceDiagram
 
     %% Build Phase
     GHA->>GH: Checkout repository
-    GHA->>GHA: npm install
-    GHA->>GHA: npm run build (Astro → dist/)
+    GHA->>GHA: cd frontend && npm install && npm run build
 
-    %% Auth Phase
-    GHA->>IAM: Access Key in GIthub Secrets 
-    IAM-->>GHA: Success, permissions scoped
 
     %% Deploy Phase
     GHA->>S3: aws s3 sync ./dist → bucket
-    S3-->>GHA: Upload / delete objects
 
     %% Invalidation
-    GHA->>CF: CreateInvalidation for Distribution (/*)
-    CF-->>GHA: Invalidation accepted (deleting Cached files worldwide)
+    GHA-->>CF: CreateInvalidation for Distribution (/*)
 
     %% Runtime Access
     User->>CF: HTTPS Request (index.html)
@@ -165,31 +158,17 @@ sequenceDiagram
     CF-->>User: Cached content delivered
 ```
 
-## Enhancements & Next Steps
+## Cost
 
-- replace deploy-user with STS, Roles & OIDC (for Github Actions)
-- custom sub/domain
-- refine CD trigger (manually, PR)
-- 2nd deployment for test+prod or release creation
-- **fork away the github-actions-branch**
-- implement dynamic serverless features into frontend
-- move CD to AWS pipelines
-  - no aws secrets on GH (alternatively use GH w/OIDC+STS)
-  - CF to provision IAM access (no copypasta)
-  - use aws roles w/sts (best practice)
-  - monitoring and SNS notification
-- eval: limit CloudFront invalidation to changed files or coordinate CD with TTL
-- implement headless CMS (will add complexity and replace GH repo as single source of truth)
-- evaluate weither TerraForm would include more tasks or generate complexity (state-management) without benefits
-- include bash script to reinitialize (scaffold) Astro with new template
 
-## Reflection Architecture and Design Decisions 
+
+## Reflection of Architecture Design
 
 This project served to 
 - learn aws iam implementations
 - automatically build(?) and host a project on aws
 - minimize human interaction using pipelines
-- use cloudformation for most steps
+- Provision via CloudFormation IaC
 
 AWS as Webspace
 - S3 bucket configured as Public can server a website via HTTP
@@ -219,9 +198,26 @@ Building Artifacts using GitHub Actions or AWS CodePipeline?
 		- need learning
 		- is a vendor-lock
 		- generate costs after free tier
-	- 
-	- 
 
+
+## Enhancements & Next Steps
+
+- replace deploy-user with STS, Roles & OIDC (for Github Actions)
+- custom sub/domain
+- refine CD trigger (manually, PR)
+- 2nd deployment for test+prod or release creation
+- **fork away the github-actions-branch**
+- implement dynamic serverless features into frontend
+- move CD to AWS pipelines
+  - no aws secrets on GH (alternatively use GH w/OIDC+STS)
+  - CF to provision IAM access (no copypasta)
+  - use aws roles w/sts (best practice)
+  - monitoring and SNS notification
+- eval: limit CloudFront invalidation to changed files or coordinate CD with TTL
+- implement headless CMS (will add complexity and replace GH repo as single source of truth)
+- evaluate weither TerraForm would include more tasks or generate complexity (state-management) without benefits
+- include bash script to reinitialize (scaffold) Astro with new template
+- compare costs to build Artifacts in aws vs. GH
 
 ## directory structure
 
