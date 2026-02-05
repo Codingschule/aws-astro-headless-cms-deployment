@@ -21,10 +21,14 @@ The human interaction is minimized to
 
 ## How does it work?
 
-After provisioning webspace and 
+The [cloudformation.yml](./cloudformation/cloudformation.cf.yml) is used to provision s3, CloudFront, and IAM deploy-user, and Policies/OAC/etc. 
 
-Astro static site generator builds your Website from yml-files.
-But instead of lbuilding and uploading the generated website per hand 
+When the Webmaster pushes source code changes to the "dev" branch, 
+
+
+
+Astro static site generator builds your Website from markdown.
+But instead of building and uploading the generated website by hand 
 
 - you run `npm run build` within the `/frontend` directory
 - Astro will build your static website and store it in the `/frontend/src` directory.
@@ -34,6 +38,59 @@ Instead of clicking throug your webspace provider, you run the CloudFormation te
 - you upload the changes to your webspace
 Here's where things get different
 Instead looking for a webspace provider, uploading your website manually
+
+
+```mermaid
+graph TD
+
+    %% =====================
+    %% GitHub
+    %% =====================
+    Dev[Developer/Webmaster]
+    subgraph GitHub.com
+
+        subgraph Repository
+            SRC[./frontend/src]
+            Dist[./frontend/dist]
+            WF[.github/deploy.yml]
+        end
+
+        GHA[github_actions_runner]
+    end
+
+    %% =====================
+    %% AWS
+    %% =====================
+    subgraph AWS
+        IAM[iam_deploy_user]
+        S3[s3_private_bucket]
+        CF[cloudfront_distribution]
+    end
+
+    %% =====================
+    %% Dataflow
+    %% =====================
+    Dev -- git push --> SRC
+    
+    
+    SRC -- trigger --> WF
+    WF -. read .-> SRC
+    WF -. build .-> Dist
+    Dist -. use .-> GHA
+    WF -- trigger --> GHA 
+    GHA -- execute --> WF
+
+    GHA -- write --> IAM
+    IAM --> S3
+    IAM -- invalidate --> CF
+
+    S3 --> CF
+
+
+    User[end_user]
+    CF -- serve website--> User
+
+```
 
 ## Quickstart
 
@@ -113,19 +170,20 @@ sequenceDiagram
     CF->>S3: GetObject (via OAC, SigV4)
     S3-->>CF: Object response
     CF-->>User: Cached content delivered
-
 ```
 
 ## Enhancements & Next Steps
 
 - custom sub/domain
 - refine CD trigger (manually, PR)
-- 2nd deployment for test+prod
+- 2nd deployment for test+prod or release creation
+- **fork away the github-actions-branch**
 - implement dynamic serverless features into frontend
 - move CD to AWS pipelines
   - no aws secrets on GH
   - CF to provision IAM access (no copypasta)
   - use aws roles w/sts (best practice)
+  - monitoring and SNS notification
 - eval: limit CloudFront invalidation to changed files or coordinate CD with TTL
 - implement headless CMS (will add complexity and replace GH repo as single source of truth)
 - evaluate weither TerraForm would include more tasks or generate complexity (state-management) without benefits
