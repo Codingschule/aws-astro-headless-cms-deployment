@@ -2,8 +2,8 @@
 
 This project is a basic proof of concept for a static Website living in GitHub and AWS.
 Once set up, you just make changes to your website and a static generated version is deployed on CDNs worldwide as shown in [sequence diagram](#cd-continious-deployment-sequence).
-Depending on size and frequency of updates, you can run this entirely free on Github and very little aws storage cost.
-- astro static site generator (SSG)
+Depending on size and frequency of updates, you can run this entirely free on GitHub and very little aws storage cost.
+- Astro static site generator (SSG)
 - stored(src) on a github repository
 - built(frontend dist) using github actions
 - stored(frontend) on aws S3 and served by aws CloudFront CDN
@@ -14,7 +14,7 @@ The human interaction is minimized to
   - clone or fork repository once
   - Create CloudFormation Stack once
   - Paste a CloudShell/cli command
-  - transfer a few variables and secrets to Github repository settings
+  - transfer a few variables and secrets to GitHub repository settings
 - Update your website
   - Change front end src
   - Push src to your repo
@@ -41,54 +41,47 @@ Instead looking for a webspace provider, uploading your website manually
 
 
 ```mermaid
-graph TD
-
+flowchart TD
     %% =====================
-    %% GitHub
-    %% =====================
-    Dev[Developer/Webmaster]
     subgraph GitHub.com
-
-        subgraph Repository
-            SRC[./frontend/src]
-            Dist[./frontend/dist]
-            WF[.github/deploy.yml]
+        subgraph .git repository
+          SRC[./frontend/src]
+          WF[.github/deploy.yml]
         end
 
-        GHA[github_actions_runner]
+        SEC[GitHub Secrets]
+
+        subgraph GitHub Actions
+          Dist[./frontend/dist]
+          RUN[Runner]
+        end
     end
-
     %% =====================
-    %% AWS
-    %% =====================
-    subgraph AWS
-        IAM[iam_deploy_user]
-        S3[s3_private_bucket]
-        CF[cloudfront_distribution]
+    subgraph CLI[AWS Cli or CloudShell]
+        KEY[Access Keys]
     end
-
     %% =====================
-    %% Dataflow
+    subgraph AWS[cloudformation.cf.yml]
+        IAM[DeployUser]
+        CF[CloudFront Distribution]
+        S3[S3 Bucket]
+        OAC[MyOac]
+        subgraph PolDep[DeployUserPolicy]
+          Inv[Action:<br />cloudfront:<br />CreateInvalidation]
+          Wri[Action:<br />s3:PutObject<br />s3:DeleteObject<br />s3:ListBucket]
+        end
+    end
     %% =====================
-    Dev -- git push --> SRC
-    
-    
-    SRC -- trigger --> WF
-    WF -. read .-> SRC
-    WF -. build .-> Dist
-    Dist -. use .-> GHA
-    WF -- trigger --> GHA 
-    GHA -- execute --> WF
+        IAM -.Principal.-> PolDep
+          Wri -.Resource.-> S3
+          Inv -.Resource.-> CF
+        S3 -. BucketPolicyCloudFront<br />Action:<br/>s3:GetObject .-> CF
+        IAM -.aws iam create-access-key .-> KEY -- manually paste --> SEC
+        SEC --> RUN
+        WF --> RUN
+        SRC --> RUN
+        RUN --> Dist --sync with Access Key--> S3 --> OAC --> CF
 
-    GHA -- write --> IAM
-    IAM --> S3
-    IAM -- invalidate --> CF
-
-    S3 --> CF
-
-
-    User[end_user]
-    CF -- serve website--> User
 
 ```
 
@@ -128,7 +121,7 @@ Or you can use it as walkthrough to build your own.
     - git for windows comes with a windows-native bash that can run your windows apps.
 
 
-## CD (Continious Deployment) Sequence
+## CD / Deployment Sequence
 
 ```mermaid
 sequenceDiagram
@@ -174,19 +167,61 @@ sequenceDiagram
 
 ## Enhancements & Next Steps
 
+- replace deploy-user with STS, Roles & OIDC (for Github Actions)
 - custom sub/domain
 - refine CD trigger (manually, PR)
 - 2nd deployment for test+prod or release creation
 - **fork away the github-actions-branch**
 - implement dynamic serverless features into frontend
 - move CD to AWS pipelines
-  - no aws secrets on GH
+  - no aws secrets on GH (alternatively use GH w/OIDC+STS)
   - CF to provision IAM access (no copypasta)
   - use aws roles w/sts (best practice)
   - monitoring and SNS notification
 - eval: limit CloudFront invalidation to changed files or coordinate CD with TTL
 - implement headless CMS (will add complexity and replace GH repo as single source of truth)
 - evaluate weither TerraForm would include more tasks or generate complexity (state-management) without benefits
+- include bash script to reinitialize (scaffold) Astro with new template
+
+## Reflection Architecture and Design Decisions 
+
+This project served to 
+- learn aws iam implementations
+- automatically build(?) and host a project on aws
+- minimize human interaction using pipelines
+- use cloudformation for most steps
+
+AWS as Webspace
+- S3 bucket configured as Public can server a website via HTTP
+- configuring the Bucket as Website serves index.html and is more suited
+- A CloudFront Distribution add HTTPS, worldwide Caching and a lot of options and integrations
+
+Storing the repository on GitHub enables
+- Developers work on familiar territory
+- AWS InfraStructure connected by DevOps
+
+AWS CloudFormation for deterministic Infrastructure helps to reduce the manual work of configuring and connecting all the services.
+On the other hand, you might prioritize AWS services where you could get free services:
+
+Building Artifacts using GitHub Actions or AWS CodePipeline?
+- Github Actions
+	- common practice as developers feel at home
+	- long-term free building capacities (for open source)
+	- access to aws via
+		- deploy user and access keys (easy to understand)
+		  or
+		- OIDC and STS (best practice)
+- AWS CodePipeline
+	- Pro
+		- seems to integrate deeper with CloudFormation
+		- native SNS integration
+	- Con
+		- need learning
+		- is a vendor-lock
+		- generate costs after free tier
+	- 
+	- 
+
 
 ## directory structure
 
@@ -344,4 +379,4 @@ It does not follo the [Integration Guide][integrate] since we do not use its Saa
 [calc]: https://calculator.aws/ "AWS cost calculator"
 
 <!-- 
-[Template]: https://github.com/aws-cloudformation/aws-cloudformation-templates/blob/main/S3/compliant-static-website.yaml "complete compliant-static-website.yaml" -->
+[Template]: https://github.com/aws-cloudformation/aws-cloudformation-templates/blob/main/S3/compliant-static-website.yaml "complete compliant-static-web
