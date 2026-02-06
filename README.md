@@ -110,7 +110,6 @@ flowchart TD
     subgraph GitHub.com
         SEC[GitHub Secrets]
         subgraph REP[.git repository]
-        subgraph .git repository
           SRC[./frontend/src]
           WF[.github/deploy.yml]
         end
@@ -329,11 +328,11 @@ This mirrors exactly what the GitHub Actions pipeline does.
 ### 5. Configure GitHub Secrets
 
 After stack creation, get theese Outputs and transfer them to your Github repository
-GitHub Repository ==> Settings ==> Secrets
+GitHub Repository ==> Settings ==> Secrets and Variables ==> Actions
 
 * `AWS_REGION`
-* `S3_BUCKET`
-* `CLOUDFRONT_DISTRIBUTION_ID`
+* `AWS_BUCKET_NAME`
+* `AWS_CLOUDFRONT_DISTRIBUTION_ID`
 * `AWS_ROLE_ARN`
 * ~~`AWS_ACCESS_KEY_ID`~~
 * ~~`AWS_SECRET_ACCESS_KEY`~~
@@ -357,7 +356,6 @@ GitHub Actions will:
 ---
 
 ## How OAC (Origin Access Control) works
-
 
 Without SigV4, there is no authentication between CloudFront Distribution and Bucket/Policy.
 An OAC enables a CloudFront distribution to securely access an S3 bucket by signing all requests using SigV4.  
@@ -463,62 +461,6 @@ This verifies that **direct S3 access is blocked**.
 cd frontend
 npm run dev
 ```
-
-* Dev server: http://localhost:4321
-* Auto-reloads on source changes
-
-Other useful commands:
-
-```bash
-npm run build    # Generate static output
-npm run preview  # Serve dist/ locally
-```
-
----
-
-## Cost Considerations
-
-* GitHub Actions: free for open-source projects
-* S3: minimal storage cost
-* CloudFront: typically free tier–friendly for low traffic
-
-Use the [calc][AWS Cost Calculator] for estimates.
-
----
-
-## Design Rationale
-
-* **S3 + CloudFront** instead of S3 website hosting
-
-  * HTTPS
-  * Better security
-  * Global caching
-
-* **GitHub Actions** over AWS CodePipeline
-
-  * Developer familiarity
-  * Lower barrier to entry
-  * No vendor lock-in
-
-* **CloudFormation**
-
-  * Deterministic infrastructure
-  * Easy teardown and recreation
-  * No hidden manual state
-
----
-
-## Enhancements & Next Steps
-
-* Replace deploy user with **OIDC + STS (recommended)**
-* Custom domain + ACM certificate
-* Multi-environment deployments (test / prod)
-* Smarter CloudFront invalidation strategy
-* Optional serverless features
-* Evaluate Terraform vs. CloudFormation
-* Headless CMS integration (see below)
-
----
 
 * Dev server: http://localhost:4321
 * Auto-reloads on source changes
