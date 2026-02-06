@@ -155,42 +155,6 @@ OIDC-.sts amazonaws com.->STS
         S3 -.->|SigV4/OAC| CF
         RUN -.role arn.-> STS
         STS -.aws session.-> RUN
-        SEC[GitHub Secrets]
-
-        subgraph GitHub Actions
-          Dist[./frontend/dist]
-          RUN[Runner]
-        end
-    end
-    %% =====================
-    subgraph AWS[cloudformation.cf.yml]
-    %% *********************
-    subgraph CLI[aws cli or CloudShell]
-        KEY[Access Keys]
-    end
-        OUT[Stack Output]
-        IAM[DeployUser]
-        CF[CloudFront Distribution]
-        S3[S3 Bucket]
-        subgraph PolDep[DeployUserPolicy]
-          Inv[Action:<br />cloudfront:<br />CreateInvalidation]
-          Wri[Action:<br />s3:PutObject<br />s3:DeleteObject<br />s3:ListBucket]
-        end
-    end
-    %% =====================
-        IAM -.Principal.-> PolDep
-          Wri -.Resource.-> S3
-          Inv -.Resource.-> CF
-        S3 -. BucketPolicyCloudFront<br />Action:<br/>s3:GetObject .-> CF
-        OUT -.aws iam create-access-key<br />--user-name DeployUser .-> KEY -- paste manually --> SEC
-        KEY -. belong to .-> IAM
-        OUT -.paste manually.-> SEC
-
-        SEC --> RUN
-        WF --> RUN
-        SRC --> RUN
-        RUN --> Dist --push with Access Key--> S3
-        S3 -.->|GetObject<br/>SigV4 OAC<br/>SourceArn=Distribution| CF
 ```
 
 ---
@@ -370,49 +334,6 @@ And thats why OAC and BucketPolicy are both required, but not attached to each o
 Condition:
   StringEquals:
     AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
-```
-anonymous access is blocked.
-
-To allow CloudFront to access the bucket, the distribution must have an Origin Access Control (OAC) attached.
-OAC forces CloudFront to sign all requests using SigV4, ensuring that only requests from the authorized distribution are allowed.
-
-As a result:
-
-- The S3 bucket can safely block all public access
-- Only CloudFront can access the content securely
-
----
-
-**As a result, the Request is secure and the S3 Bucket can safely deny Public connections.**
-
-## CloudFormation Outputs
-
-After deployment, the stack provides:
-
-* **CloudFrontDomainName**
-  → Access your website
-
-* **BucketNameWeb**
-  → Private S3 bucket name (used by CI)
-
-* **DistributionId**
-  → Required for cache invalidation
-
-* **DebugSyncCommand**
-  → Helpful for manual uploads
-
-* **BucketBlockedWebsite / BucketBlockedUrl**
-  → Expected to return `AccessDenied` or `NoSuchWebsiteConfiguration`
-
-This verifies that **direct S3 access is blocked**.
-
----
-
-## Local Development with Astro
-
-```bash
-cd frontend
-npm run dev
 ```
 anonymous access is blocked.
 
