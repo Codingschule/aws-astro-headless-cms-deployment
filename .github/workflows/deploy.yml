@@ -1,7 +1,13 @@
 name: Deploy to AWS
 on:
-  push:
+  push: # successfull merge is also a push
     branches: [ dev ]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        default: 'dev'
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
