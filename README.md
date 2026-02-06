@@ -108,47 +108,48 @@ The overview shows cloudformation.cf.yml resources with simplified relations whe
 flowchart TD
     %% =====================
     subgraph GitHub.com
-        subgraph .git repository
+        SEC[GitHub Secrets]
+        subgraph REP[.git repository]
           SRC[./frontend/src]
           WF[.github/deploy.yml]
         end
-
-        SEC[GitHub Secrets]
 
         subgraph GitHub Actions
           Dist[./frontend/dist]
           RUN[Runner]
         end
+
     end
+
     %% =====================
     subgraph AWS[cloudformation.cf.yml]
-    %% *********************
-    subgraph CLI[aws cli or CloudShell]
-        KEY[Access Keys]
-    end
-        OUT[Stack Output]
-        IAM[DeployUser]
-        CF[CloudFront Distribution]
-        S3[S3 Bucket]
-        subgraph PolDep[DeployUserPolicy]
-          Inv[Action:<br />cloudfront:<br />CreateInvalidation]
-          Wri[Action:<br />s3:PutObject<br />s3:DeleteObject<br />s3:ListBucket]
-        end
+      OUT[Stack Output]
+      %% *********************
+      OIDC[OIDC Provider]
+      subgraph ROL[GitubRole]
+        Inv[Action:<br />cloudfront:<br />CreateInvalidation]
+        Wri[Action:<br />s3:PutObject<br />s3:DeleteObject<br />s3:ListBucket]
+      end
+      
+      CF[CloudFront Distribution]
+      S3[S3 Bucket]
     end
     %% =====================
-        IAM -.Principal.-> PolDep
-          Wri -.Resource.-> S3
-          Inv -.Resource.-> CF
-        S3 -. BucketPolicyCloudFront<br />Action:<br/>s3:GetObject .-> CF
-        OUT -.aws iam create-access-key<br />--user-name DeployUser .-> KEY -- paste manually --> SEC
-        KEY -. belong to .-> IAM
-        OUT -.paste manually.-> SEC
 
-        SEC --> RUN
+        ROL -.role arn.-> OUT
+        SEC -.-> RUN
         WF --> RUN
         SRC --> RUN
-        RUN --> Dist --push with Access Key--> S3
-        S3 -.->|GetObject<br/>SigV4 OAC<br/>SourceArn=Distribution| CF
+        
+        OUT -.paste manually.-> SEC
+
+        ROL -.Indirect reference.-> OIDC
+          Wri -.Resource.-> S3
+          Inv -.Resource.-> CF
+
+        RUN --> Dist
+        Dist --StsAssumeRole--> S3
+        S3 -.->|SigV4/OAC| CF
 ```
 
 ---
