@@ -46,6 +46,7 @@ The infrastructure is fully provisioned via **AWS CloudFormation (IaC)** and des
     - [5. Configure GitHub Secrets](#5-configure-github-secrets)
     - [6. Deploy via CI/CD](#6-deploy-via-cicd)
   - [How OAC (Origin Access Control) works](#how-oac-origin-access-control-works)
+  - [How OIDC works](#how-oidc-works)
   - [CloudFormation Outputs](#cloudformation-outputs)
   - [Local Development with Astro](#local-development-with-astro)
   - [Cost Considerations](#cost-considerations)
@@ -54,6 +55,9 @@ The infrastructure is fully provisioned via **AWS CloudFormation (IaC)** and des
   - [Out of Scope: Strapi (Headless CMS)](#out-of-scope-strapi-headless-cms)
     - [Local Strapi Quickstart](#local-strapi-quickstart)
     - [Integrating Strapi with Astro](#integrating-strapi-with-astro)
+  - [releases und planned integrations](#releases-und-planned-integrations)
+    - [releases](#releases)
+    - [roadmap](#roadmap)
   - [Authors](#authors)
   - [links and thanks](#links-and-thanks)
 <!-- /TOC -->
@@ -93,8 +97,8 @@ The infrastructure is fully provisioned via **AWS CloudFormation (IaC)** and des
 
 * **AWS IAM**
 
-  * Dedicated deploy user with least-privilege permissions
-  * Access keys used by CI pipeline (OIDC planned)
+  * OidcRole with S3 Access and Distribution Invalidation
+  * OIDC Provider added (not linked)
 
 ### Topology
 
@@ -281,14 +285,15 @@ This mirrors exactly what the GitHub Actions pipeline does.
 
 ### 5. Configure GitHub Secrets
 
-Create access keys for the deploy user and add them to the GitHub repository:
-Repository ==> Secrets
+After stack creation, get theese Outputs and transfer them to your Github repository
+GitHub Repository ==> Settings ==> Secrets
 
-* `AWS_ACCESS_KEY_ID`
-* `AWS_SECRET_ACCESS_KEY`
 * `AWS_REGION`
 * `S3_BUCKET`
 * `CLOUDFRONT_DISTRIBUTION_ID`
+* `AWS_ROLE_ARN`
+* ~~`AWS_ACCESS_KEY_ID`~~
+* ~~`AWS_SECRET_ACCESS_KEY`~~
 
 ---
 
@@ -309,7 +314,6 @@ GitHub Actions will:
 ---
 
 ## How OAC (Origin Access Control) works
-
 
 Without SigV4, there is no authentication between CloudFront Distribution and Bucket/Policy.
 An OAC enables a CloudFront distribution to securely access an S3 bucket by signing all requests using SigV4.  
@@ -338,6 +342,10 @@ As a result:
 ---
 
 **As a result, the Request is secure and the S3 Bucket can safely deny Public connections.**
+
+## How OIDC works
+
+todo...
 
 ## CloudFormation Outputs
 
@@ -449,6 +457,14 @@ See:
 * [Patchfile](./doc/integrate_strapi_into_astro.patch)
 
 ---
+
+## releases und planned integrations
+
+### releases
+- 1.0 static website without cloudfront
+
+### roadmap
+
 
 ## Authors
 
