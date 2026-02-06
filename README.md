@@ -28,6 +28,38 @@ The infrastructure is fully provisioned via **AWS CloudFormation (IaC)** and des
 
 ---
 
+<!-- TOC -->
+- [aws-astro-headless-cms-deployment](#aws-astro-headless-cms-deployment)
+  - [Overview](#overview)
+  - [Architecture \& Tech Stack](#architecture--tech-stack)
+    - [Core Components](#core-components)
+    - [Topology](#topology)
+  - [Repository Structure](#repository-structure)
+  - [How It Works](#how-it-works)
+    - [Infrastructure Provisioning](#infrastructure-provisioning)
+    - [CI / CD Flow](#ci--cd-flow)
+  - [Quickstart](#quickstart)
+    - [1. Prerequisites](#1-prerequisites)
+    - [2. Clone or Fork the Repository](#2-clone-or-fork-the-repository)
+    - [3. Provision AWS Infrastructure](#3-provision-aws-infrastructure)
+    - [4. Build and Deploy Manually (for Understanding)](#4-build-and-deploy-manually-for-understanding)
+    - [5. Configure GitHub Secrets](#5-configure-github-secrets)
+    - [6. Deploy via CI/CD](#6-deploy-via-cicd)
+  - [How OAC (Origin Access Control) works](#how-oac-origin-access-control-works)
+  - [CloudFormation Outputs](#cloudformation-outputs)
+  - [Local Development with Astro](#local-development-with-astro)
+  - [Cost Considerations](#cost-considerations)
+  - [Design Rationale](#design-rationale)
+  - [Enhancements \& Next Steps](#enhancements--next-steps)
+  - [Out of Scope: Strapi (Headless CMS)](#out-of-scope-strapi-headless-cms)
+    - [Local Strapi Quickstart](#local-strapi-quickstart)
+    - [Integrating Strapi with Astro](#integrating-strapi-with-astro)
+  - [Authors](#authors)
+  - [links and thanks](#links-and-thanks)
+<!-- /TOC -->
+
+
+
 ## Architecture & Tech Stack
 
 ### Core Components
@@ -176,7 +208,7 @@ sequenceDiagram
   CF->>S3: GetObject
   CF-->>User: Cached response
 ```
-
+ 
 ---
 
 ## Quickstart
@@ -275,6 +307,37 @@ GitHub Actions will:
 * Invalidate CloudFront cache
 
 ---
+
+## How OAC (Origin Access Control) works
+
+
+Without SigV4, there is no authentication between CloudFront Distribution and Bucket/Policy.
+An OAC enables a CloudFront distribution to securely access an S3 bucket by signing all requests using SigV4.  
+The bucket policy can then restrict access to the authorized distribution’s ARN (AWS:SourceArn), blocking all other requests.  
+Without OAC, CloudFront requests are anonymous and cannot satisfy the SourceArn condition.
+
+And thats why OAC and BucketPolicy are both required, but not attached to each other:
+- the OAC is only attached to the Distribution
+- The BucketPolicy is attached to the Bucket, refering to the Distribution
+
+```yaml
+Condition:
+  StringEquals:
+    AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+```
+anonymous access is blocked.
+
+To allow CloudFront to access the bucket, the distribution must have an Origin Access Control (OAC) attached.
+OAC forces CloudFront to sign all requests using SigV4, ensuring that only requests from the authorized distribution are allowed.
+
+As a result:
+
+- The S3 bucket can safely block all public access
+- Only CloudFront can access the content securely
+
+---
+
+**As a result, the Request is secure and the S3 Bucket can safely deny Public connections.**
 
 ## CloudFormation Outputs
 
