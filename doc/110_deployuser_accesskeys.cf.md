@@ -22,18 +22,15 @@ It focuses on describing the DeployUser tepology and it's downsides compared to 
     - [CI / CD Flow](#ci--cd-flow)
   - [Quickstart](#quickstart)
     - [5. Configure GitHub Secrets](#5-configure-github-secrets)
-    - [6. Deploy via CI/CD](#6-deploy-via-cicd)
   - [How OAC (Origin Access Control) works](#how-oac-origin-access-control-works)
   - [CloudFormation Outputs](#cloudformation-outputs)
   - [Local Development with Astro](#local-development-with-astro)
   - [Cost Considerations](#cost-considerations)
   - [Design Rationale](#design-rationale)
   - [Enhancements \& Next Steps](#enhancements--next-steps)
-  - [Out of Scope: Strapi (Headless CMS)](#out-of-scope-strapi-headless-cms)
-    - [Local Strapi Quickstart](#local-strapi-quickstart)
-    - [Integrating Strapi with Astro](#integrating-strapi-with-astro)
   - [Authors](#authors)
   - [links and thanks](#links-and-thanks)
+
 <!-- /TOC -->
 
 ## Architecture & Tech Stack
@@ -68,6 +65,10 @@ It focuses on describing the DeployUser tepology and it's downsides compared to 
   * HTTPS, caching, global distribution
   * Uses **Origin Access Control (OAC)** to access S3
 
+* **AWS IAM**
+
+  * Dedicated deploy user with least-privilege permissions
+  * Access keys used by CI pipeline (OIDC planned)
 
 ### Topology
 
@@ -146,20 +147,15 @@ manual AWS console configuration is required beyond stack creation: paste creden
 sequenceDiagram
   autonumber
 
-  participant Dev as Developer
-  participant GIT as Repository
   participant GHA as Github Actions
   participant S3 as S3 Bucket
   participant CF as CloudFront
   participant User as End User
 
-  Dev->>GIT: git push (dev branch)
-  GIT->>GHA: Trigger deploy.yml
-  GHA->>GHA: npm install & npm run build
-  GHA->>S3: aws s3 sync ./dist
-  GHA-->>CF: CreateInvalidation (/*)
+  GHA->>S3: aws s3 sync ./dist (via DeployUser)
+  GHA-->>CF: CreateInvalidation (/*) (via DeployUser)
   User->>CF: HTTPS request
-  CF->>S3: GetObject
+  CF->>S3: GetObject (OAC-enabled)
   CF-->>User: Cached response
 ```
  
@@ -171,7 +167,16 @@ sequenceDiagram
 
 ### 5. Configure GitHub Secrets
 
-Create access keys for the deploy user and add them to the GitHub repository:
+1. Create access keys for the deploy user
+  - After deploying the Stack, look into the Stack Outputs:
+  - You will AWS_REGION, S3_BUCKET and CLOUDFRONT-DISTRIBUTION_ID
+  - CreateAccessKeyCommand will look something like this (the correct username will show up):
+    - `aws iam create-access-key --user-name ${AppName}-deploy-user`
+    - If you dont have aws cli installed, just browse AWS CloudShell and run it there.
+  - You could also use YOUR OWN USER to create the Keys but they would have WAY TO MANY PRIVILEGES FOR GITHUB so PLEASE DONT:
+    - aws iam create-access-key
+
+2. Add them to the GitHub repository:
 Repository ==> Secrets
 
 * `AWS_ACCESS_KEY_ID`
@@ -182,24 +187,13 @@ Repository ==> Secrets
 
 ---
 
-### 6. Deploy via CI/CD
-
-Push changes to `dev`:
-
-```bash
-git push origin dev
-```
-
-GitHub Actions will:
-
-* Build the Astro site
-* Sync artifacts to S3
-* Invalidate CloudFront cache
+(project details removed)
 
 ---
 
 ## How OAC (Origin Access Control) works
 
+*(this is not related to the DeployUser but i'll leave it here for general IAM understanding)*
 
 Without SigV4, there is no authentication between CloudFront Distribution and Bucket/Policy.
 An OAC enables a CloudFront distribution to securely access an S3 bucket by signing all requests using SigV4.  
@@ -254,22 +248,7 @@ This verifies that **direct S3 access is blocked**.
 
 ## Local Development with Astro
 
-```bash
-cd frontend
-npm run dev
-```
-
-* Dev server: http://localhost:4321
-* Auto-reloads on source changes
-
-Other useful commands:
-
-```bash
-npm run build    # Generate static output
-npm run preview  # Serve dist/ locally
-```
-
----
+(removed)
 
 ## Cost Considerations
 
@@ -279,15 +258,7 @@ npm run preview  # Serve dist/ locally
 
 Use the [calc][AWS Cost Calculator] for estimates.
 
----
-
 ## Design Rationale
-
-* **S3 + CloudFront** instead of S3 website hosting
-
-  * HTTPS
-  * Better security
-  * Global caching
 
 * **GitHub Actions** over AWS CodePipeline
 
@@ -306,45 +277,13 @@ Use the [calc][AWS Cost Calculator] for estimates.
 ## Enhancements & Next Steps
 
 * Replace deploy user with **OIDC + STS (recommended)**
-* Custom domain + ACM certificate
-* Multi-environment deployments (test / prod)
-* Smarter CloudFront invalidation strategy
-* Optional serverless features
-* Evaluate Terraform vs. CloudFormation
-* Headless CMS integration (see below)
-
----
-
-## Out of Scope: Strapi (Headless CMS)
-
-Strapi is **not part of the core project**, but can be integrated.
-
-### Local Strapi Quickstart
-
-```bash
-npx create-strapi-app backend-strapi
-cd backend-strapi
-npm run dev
-```
-
-### Integrating Strapi with Astro
-
-* Use REST or GraphQL
-* Configure `STRAPI_URL` in `.env`
-* Apply the provided patch file if needed
-
-See:
-
-* [integrate][Strapi integrations]
-* [Patchfile](./doc/integrate_strapi_into_astro.patch)
+* or move whole build Pipeline to AWS (not recommended)
 
 ---
 
 ## Authors
 
 * [matt][Matthias Block] — Code
-* [sam][Sam Dillenburg] — Planning & Mentoring
-* ChatGPT - add long dashes
 
 ## links and thanks
 
