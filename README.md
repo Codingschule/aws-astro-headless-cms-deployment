@@ -117,6 +117,7 @@ flowchart TD
         subgraph GitHub Actions
           Dist[./frontend/dist]
           RUN[Runner]
+    STS[token.actions.<br />githubusercontent.com]
         end
 
     end
@@ -136,6 +137,8 @@ flowchart TD
     end
     %% =====================
 
+OIDC-.sts amazonaws com.->STS
+
         ROL -.role arn.-> OUT
         SEC -.-> RUN
         WF --> RUN
@@ -148,8 +151,10 @@ flowchart TD
           Inv -.Resource.-> CF
 
         RUN --> Dist
-        Dist --StsAssumeRole--> S3
+        Dist --update Bucket<br />&<br />invalidate Distribution--> S3
         S3 -.->|SigV4/OAC| CF
+        RUN -.role arn.-> STS
+        STS -.aws session.-> RUN
 ```
 
 ---
