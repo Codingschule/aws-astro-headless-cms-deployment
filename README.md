@@ -150,7 +150,7 @@ OIDC-.sts amazonaws com.->STS
           Wri -.Resource.-> S3
           Inv -.Resource.-> CF
 
-        RUN --> Dist
+        RUN --build--> Dist
         Dist --update Bucket<br />&<br />invalidate Distribution--> S3
         S3 -.->|SigV4/OAC| CF
         RUN -.role arn.-> STS
