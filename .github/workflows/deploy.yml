@@ -2,14 +2,16 @@ name: Deploy to AWS (OIDC)
 on:
   push: # successfull merge is also a push
     branches: [ dev ]
+  pull_request: # successfull merge is also a push
+    branches: [ dev ]
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to deploy from'
+        description: 'deploy.yml AND src from'
         default: 'dev'
 
 jobs:
-  deploy:
+  build_and_maybe_deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +27,9 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy to S3
+        if: github.event_name == 'push'
         run: aws s3 sync ./frontend/dist s3://${{ secrets.AWS_BUCKET_NAME }} --delete
 
       - name: Invalidate CloudFront
+        if: github.event_name == 'push'
         run: aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_CLOUDFRONT_ID }} --paths "/*"
