@@ -1,4 +1,9 @@
 name: Deploy to AWS (OIDC)
+
+permissions:
+  id-token: write
+  contents: read
+
 on:
   push: # successfull merge is also a push
     branches: [ dev ]
