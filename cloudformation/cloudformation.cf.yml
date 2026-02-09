@@ -18,6 +18,10 @@ Parameters:
   AuthorizedGithubRepository: 
     Type: String
     Default: "Codingschule/aws-astro-headless-cms-deployment"
+  DomainName:
+    Type: String
+    Default: "example.com"
+    Description: "Custom domain name for the CloudFront distribution"
 
 Resources:
   MyWebBucket:
@@ -50,6 +54,8 @@ Resources:
       DistributionConfig:
         Enabled: true
         DefaultRootObject: "index.html"
+        Aliases:
+          - !Ref DomainName
         Origins:
           - Id: S3Origin
             DomainName: !GetAtt MyWebBucket.RegionalDomainName
@@ -68,9 +74,18 @@ Resources:
           Compress: true
           CachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6"
         ViewerCertificate:
-          CloudFrontDefaultCertificate: true
+          AcmCertificateArn: !Ref WebsiteCertificate
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
         HttpVersion: http2
+
         PriceClass: PriceClass_100
+
+  WebsiteCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
 
   BucketPolicyCloudFront:
     Type: AWS::S3::BucketPolicy
@@ -154,6 +169,15 @@ Outputs:
     Value: !Sub "${AWS::Region}" 
   CloudFrontDomainName:
     Value: !GetAtt CloudFrontDistribution.DomainName
+  CustomDomainName:
+    Value: !Ref DomainName
+    Description: "Custom domain configured for CloudFront"
+  CertificateArn:
+    Value: !Ref WebsiteCertificate
+    Description: "ACM Certificate ARN for custom domain"
+  DnsRecord:
+    Value: !Sub "${DomainName} CNAME ${CloudFrontDistribution.DomainName}"
+    Description: "DNS CNAME record to create"
   DebugSyncCommand:
     Value: !Sub "aws s3 sync ./frontend/dist/ s3://${MyWebBucket} --delete --role-arn arn:aws:iam::${AWS::AccountId}:role/${AppName}-github-actions-role" 
   BlockedBucketWebsite:
