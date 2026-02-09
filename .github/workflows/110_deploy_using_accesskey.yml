@@ -1,4 +1,4 @@
-name: Deploy to AWS
+name: Deploy to AWS using Access Key (ver.110)
 on:
   push:
     branches: [ dev ]
