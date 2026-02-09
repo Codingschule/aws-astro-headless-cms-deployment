@@ -105,6 +105,7 @@ Resources:
               StringEquals:
                 token.actions.githubusercontent.com:sub: # several entries possible
                   - !Sub "repo:${AuthorizedGithubRepository}:ref:refs/heads/dev"
+                  - !Sub "repo:${AuthorizedGithubRepository}:ref:refs/pull/*"
               StringEqualsIgnoreCase:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
       Policies:

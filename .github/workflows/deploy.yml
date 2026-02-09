@@ -24,13 +24,13 @@ jobs:
         if: github.event_name == 'push'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Deploy to S3
         if: github.event_name == 'push'
-        run: aws s3 sync ./frontend/dist s3://${{ secrets.AWS_BUCKET_NAME }} --delete
+        run: aws s3 sync ./frontend/dist s3://${{ vars.AWS_BUCKET_NAME }} --delete
 
       - name: Invalidate CloudFront
         if: github.event_name == 'push'
-        run: aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_CLOUDFRONT_ID }} --paths "/*"
+        run: aws cloudfront create-invalidation --distribution-id ${{ vars.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
