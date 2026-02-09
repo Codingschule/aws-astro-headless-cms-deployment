@@ -1,11 +1,11 @@
-name: Deploy to AWS
+name: Deploy to AWS (OIDC)
 on:
   push: # successfull merge is also a push
     branches: [ dev ]
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to deploy'
+        description: 'Branch to deploy from'
         default: 'dev'
 
 jobs:
