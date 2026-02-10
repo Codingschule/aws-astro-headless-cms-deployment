@@ -34,6 +34,13 @@ Conditions:
   IsOidcNeeded: !Equals [ !Ref DeployUniqueOidcProdiverForThisAccount, "true" ]
 
 Resources:
+  MyTemporaryOidcCreatorStack:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: ./ephemeral_oidc_bootstrap # Pfad zu deinem zweiten SAM Template, das den OIDC-Provider anlegt
+      Parameters:
+        OidcProviderArn: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+
   MyWebBucket:
     Type: AWS::S3::Bucket
     Properties:

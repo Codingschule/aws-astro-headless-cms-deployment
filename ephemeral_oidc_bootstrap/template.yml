@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: |
+  This Epheremal Helper Bootstrapping Stack exists for one reason:
+  make sure an OIDC Github Provider exists for this Account.
+  The Function only needs to be run once.
+  The created OIDC Provider is NOT part of this Stack but will be created isloated.
+  When deploying this Stack SEPERATELY, it will create its own samconfig.toml. If you dont want this, just let the parent SAM template call this one as child.
+
+Resources:
+  OidcProviderCheckLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.lambda_handler
+#      Role: !Ref OidcProviderCreationRole
+      Role: !GetAtt OidcProviderCreationRole.Arn
+      Runtime: python3.13
+      CodeUri: ./py_create_oidc
+      # Code:
+      #   S3Bucket: myBucket
+      #   S3Key: myLambdaCode.zip
+  RunMyLambdaOidcProviderCheck: ##
+    Type: Custom::OidcProviderCheck
+    Properties:
+      ServiceToken: !GetAtt OidcProviderCheckLambda.Arn
+      OidcProviderArn: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+      Timeout: 10 # seconds
+#      MemorySize: 128
+
+  OidcProviderCreationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: "AllowOidcProviderCreation"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:ListOpenIDConnectProviders
+                  - iam:CreateOpenIDConnectProvider
+                Resource: "*"
+
