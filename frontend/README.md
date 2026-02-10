@@ -40,6 +40,19 @@ The `src/content/` directory contains "collections" of related Markdown and MDX 
 
 Any static assets, like images, can be placed in the `public/` directory.
 
+## Environment Variables
+
+The guestbook feature requires an API URL to function.
+
+- **Production (GitHub Actions)**: Add `VITE_PUBLIC_GUESTBOOK_API_URL` to your GitHub Repository variables.
+- **Local Development**: Create a `.env` file in the `frontend/` directory with the following content:
+
+```bash
+PUBLIC_GUESTBOOK_API_URL=https://your-api-gateway-url.com/guestbook
+```
+
+> **Note**: The `.env` file is gitignored and should not be committed to the repository.
+
 ## 🧞 Commands
 
 All commands are run from the root of the project, from a terminal:

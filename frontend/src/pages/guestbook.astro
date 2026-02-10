@@ -1,0 +1,26 @@
+---
+import BaseHead from "../components/BaseHead.astro";
+import Footer from "../components/Footer.astro";
+import Header from "../components/Header.astro";
+import GuestbookComponent from "../components/Guestbook.astro";
+import { SITE_TITLE, SITE_DESCRIPTION } from "../consts";
+---
+
+<!doctype html>
+<html lang="en">
+    <head>
+        <BaseHead
+            title={`Guestbook - ${SITE_TITLE}`}
+            description={SITE_DESCRIPTION}
+        />
+    </head>
+    <body>
+        <Header />
+        <main>
+            <h1>Guestbook</h1>
+            <p>Welcome to our guestbook! Feel free to leave a message.</p>
+            <GuestbookComponent />
+        </main>
+        <Footer />
+    </body>
+</html>
