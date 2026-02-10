@@ -15,7 +15,7 @@ Globals:
     Timeout: 3
 
 Parameters:
-  DeployUniqueOidcProdiverForThisRegion:
+  DeployUniqueOidcProdiverForThisAccount:
     Type: String
     Default: "false" ## 
     Description: "Create the OIDC Provider (only 1 per region allowed)?"
@@ -31,9 +31,7 @@ Parameters:
     Default: "Codingschule/aws-astro-headless-cms-deployment"
 
 Conditions:
-  IsOidcNeeded: !Equals [ !Ref DeployUniqueOidcProdiverForThisRegion, "true" ]
-
-
+  IsOidcNeeded: !Equals [ !Ref DeployUniqueOidcProdiverForThisAccount, "true" ]
 
 Resources:
   MyWebBucket:
