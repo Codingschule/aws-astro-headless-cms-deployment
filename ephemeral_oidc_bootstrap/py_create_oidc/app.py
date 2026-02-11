@@ -19,10 +19,13 @@ def lambda_handler(event, context):
         # IAM Client zum Erstellen und Abfragen von OIDC Providern
         client = boto3.client('iam')
 
-        # Prüfe, ob der OIDC-Provider existiert
-        response = client.list_openid_connect_providers()
-        exists = any(provider_arn == oidc_provider_arn for provider_arn in response['OpenIDConnectProviderList'])
-        
+        # Wenn der Provider existiert, überspringen. Andernfalls erstellen.
+        try:
+            response = client.list_openid_connect_providers()
+            exists = any(provider_arn == oidc_provider_arn for provider_arn in response['OpenIDConnectProviderList'])
+        except client.exceptions.NoSuchEntityException:
+            exists = False
+
         if exists:
             return {
                 'Status': 'SUCCESS',
