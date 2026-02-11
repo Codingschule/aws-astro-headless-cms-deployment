@@ -12,30 +12,26 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: app.lambda_handler
-#      Role: !Ref OidcProviderCreationRole
       Role: !GetAtt OidcProviderCreationRole.Arn
       Runtime: python3.13
       CodeUri: ./py_create_oidc
-      # Code:
-      #   S3Bucket: myBucket
-      #   S3Key: myLambdaCode.zip
       Timeout: 3 # seconds
-  MyVirtualOidcProvider: ##
+
+  MyVirtualOidcProvider:
     Type: Custom::OidcProviderCheck
     Properties:
       ServiceToken: !GetAtt OidcProviderCheckLambda.Arn
       OidcClientId:    !Sub "sts.amazonaws.com"
       OidcProviderUrl: !Sub "https://token.actions.githubusercontent.com"
       OidcThumbPrint:  !Sub "6938fd4d98bab03faadb97b34396831e3780aea1"
-#     OidcProviderArn: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
-#     AwsAccountId: !Sub "${AWS::AccountId}"
       DeleteOidcWithCustomResource: false # default is false: do not delete the "real" OIDC as other stacks might need it!
       Timeout: 3 # seconds
-    #  MemorySize: 128
 
   OidcProviderCreationRole:
     Type: AWS::IAM::Role
     Properties:
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -56,5 +52,15 @@ Resources:
                   - iam:DeleteOpenIDConnectProvider
                   - tag:TagResources
                   - tag:GetResources
-                #Resource: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/*"
                 Resource: "*"
+        - PolicyName: "AllowCloudWatchLogs"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+        # Hinzufügen der verwalteten Richtlinie AWSLambdaBasicExecutionRole, um CloudWatch Logs zu ermöglichen
