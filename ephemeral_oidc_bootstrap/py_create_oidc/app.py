@@ -6,7 +6,9 @@ from urllib.parse import urlparse
 
 iam_client = boto3.client('iam')
 sts_client = boto3.client('sts')
-tagging_client = boto3.client('resourcegroupstaggingapi')
+tagging_client = boto3.client('resourcegroupstaggingapi')  # Verwende den richtigen Tagging-Client
+
+logging.basicConfig(level=logging.INFO)
 
 def send_response(status, reason, physical_resource_id, data, event):
     """
@@ -27,7 +29,9 @@ def send_response(status, reason, physical_resource_id, data, event):
         r = requests.put(response_url, json=response_body)
         logging.info(f"CloudFormation response sent: {r.status_code}")
     except Exception as e:
-        logging.error(f"Failed to send response to CloudFormation: {str(e)}")
+        logging.error(f"Failed to send response to CloudFormation: {str(e)},\n\ {response_body}")
+        raise e
+
 
 def get_stack_name_from_arn(stack_arn):
     """
@@ -55,7 +59,7 @@ def create_or_delete_oidc_provider(oidc_url, oidc_client_id, oidc_thumb_print, s
                     Url=oidc_url,
                     ClientIDList=[oidc_client_id],
                     ThumbprintList=[oidc_thumb_print],
-                    Tags=[{'Key': 'Created-By-Stack', 'Value': event['StackId']}, {'Key': 'Created-By', 'Value': 'Lambda'}]
+                    Tags=[{'Key': 'Created-By-Stack', 'Value': event['StackId']}]
                 )
                 return response, oidc_arn
 
@@ -67,58 +71,71 @@ def create_or_delete_oidc_provider(oidc_url, oidc_client_id, oidc_thumb_print, s
             if delete_oidc:
                 response = iam_client.delete_open_id_connect_provider(OpenIDConnectProviderArn=oidc_arn)
                 return response, oidc_arn
+        else:
+            logging.error(f"unknown Event Requesttype! Event: {event}")
+            send_response("FAILED", f"Error: {str(e)}", oidc_url, {"Error": str(e)}, event)
+            raise e
+
 
     except Exception as e:
         logging.error(f"Error creating or deleting OIDC provider: {str(e)}")
         send_response("FAILED", f"Error: {str(e)}", oidc_url, {"Error": str(e)}, event)
         raise e
 
-def update_tags_for_oidc_provider(oidc_arn, stack_name, event, delete_oidc):
+def update_tags_for_oidc_provider(oidc_arn, stack_name, event):
     """
     Update or remove the tags for the OIDC provider using resourcegroupstaggingapi
     """
     try:
-        # Tag für 'Used-By-Stack' hinzufügen oder entfernen
+        # # 1. Setze Created-By-Stack Tag für Create/Update
+        # if event['RequestType'] in ['Create', 'Update']:
+        #     tagging_client.tag_resources(
+        #         ResourceARNList=[oidc_arn],
+        #         Tags={
+        #             'Created-By-Stack': event['StackId'],
+        #             'Created-By': 'Lambda'  # 'Created-By' wird nur beim Erstellen gesetzt
+        #         }
+        #     )
+
+        # elif event['RequestType'] == 'Delete':
+        #     # 'Created-By-Stack' und 'Created-By' nur beim Erstellen setzen
+        #     tagging_client.untag_resources(
+        #         ResourceARNList=[oidc_arn],
+        #         TagKeys=['Created-By-Stack', 'Created-By']  # Nur beim Erstellen werden sie entfernt
+        #     )
+
+        # 2. Hole den 'Used-By-Stacks' Tag und aktualisiere ihn sicher
+        response = tagging_client.get_resources(TagFilters=[{'Key': 'Used-By-Stacks'}])
+        # used_by_stacks_tag = response.get('ResourceTagMappingList', [])
+
+        # Sicherstellen, dass wir einen gültigen Tagwert haben, bevor wir 'split()' verwenden
+        tag_value = response['ResourceTagMappingList'][0]['Tags'][0].get('Value', '')
+        logging.debug(f"old existing_stacks: {tag_value}")
+
+        set_existing_stacks = set(tag_value.split(',')) if tag_value else set()
         if event['RequestType'] in ['Create', 'Update']:
+            set_existing_stacks.add(stack_name)
+
+        elif event['RequestType'] == 'Delete' and stack_name in set_existing_stacks:
+            set_existing_stacks.remove(stack_name)
+
+
+        # Sicherstellen, dass der 'Used-By-Stacks' Tag korrekt erstellt oder aktualisiert wird
+        s_new_used_stacks = ",".join(set_existing_stacks).strip()
+
+        # Tag setzen, wenn der resultierende String nicht leer ist
+        if s_new_used_stacks != "":  # Stelle sicher, dass der String nicht leer ist
             tagging_client.tag_resources(
                 ResourceARNList=[oidc_arn],
-                Tags={'Used-By-Stack-' + stack_name: event['StackId']}
+                Tags={'Used-By-Stacks': s_new_used_stacks}
             )
-
-        elif event['RequestType'] == 'Delete' and delete_oidc:
+        else:
             tagging_client.untag_resources(
                 ResourceARNList=[oidc_arn],
-                TagKeys=['Used-By-Stack-' + stack_name]
+                TagKeys=['Used-By-Stacks']
             )
 
-        # Abrufen der 'Used-By-Stacks' Tags
-        used_by_stacks_tag = tagging_client.get_resources(TagFilters=[{'Key': 'Used-By-Stacks'}]).get('ResourceTagMappingList', [])
-        
-        # Sicherstellen, dass Tags existieren, bevor wir sie verarbeiten
-        existing_stacks = set()
-        for tag_mapping in used_by_stacks_tag:
-            for tag in tag_mapping.get('Tags', []):
-                if tag.get('Key') == 'Used-By-Stacks' and tag.get('Value'):
-                    existing_stacks.add(tag['Value'])
-
-        # Debug-Log, um zu sehen, welche Tags wir haben
-        logging.debug(f"Existing 'Used-By-Stacks' tags: {existing_stacks}")
-
-        # Stacknamen für Create/Update hinzufügen
-        if event['RequestType'] in ['Create', 'Update']:
-            existing_stacks.add(stack_name)
-
-        # Für Delete: Stacknamen entfernen
-        elif event['RequestType'] == 'Delete' and delete_oidc:
-            existing_stacks.discard(stack_name)
-
-        # Setze den neuen Wert des 'Used-By-Stacks' Tags
-        new_used_by_stacks = ",".join(sorted(existing_stacks))
-
-        tagging_client.tag_resources(
-            ResourceARNList=[oidc_arn],
-            Tags={'Used-By-Stacks': new_used_by_stacks}
-        )
+        logging.debug(f"Updated set_existing_stacks: {s_new_used_stacks}")
 
     except Exception as e:
         logging.error(f"Error updating tags for OIDC provider: {str(e)}")
@@ -145,7 +162,7 @@ def lambda_handler(event, context):
             oidc_url, oidc_client_id, oidc_thumb_print, stack_id, stack_name, delete_oidc, event
         )
 
-        update_tags_for_oidc_provider(oidc_arn, stack_name, event, delete_oidc)
+        update_tags_for_oidc_provider(oidc_arn, stack_name, event)
 
         send_response(
             "SUCCESS",
