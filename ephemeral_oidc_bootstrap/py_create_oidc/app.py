@@ -32,6 +32,7 @@ def lambda_handler(event, context):
             Url=oidc_url,
             ClientIDList=['sts.amazonaws.com'],
             ThumbprintList=['6938fd4d98bab03faadb97b34396831e3780aea1'],
+            Tags=[{'Key': 'Created-By-Stack', 'Value': event['StackId']}],
             Tags=[{'Key': 'Created-By', 'Value': 'Lambda'}]
         )
 
