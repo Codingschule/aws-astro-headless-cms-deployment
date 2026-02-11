@@ -1,17 +1,3 @@
-# how to use within CloudFormation/Sam:
-# MyVirtualOidcProvider: ##
-#   Type: Custom::OidcProviderCheck
-#   Properties:
-#     ServiceToken: !GetAtt OidcProviderCheckLambda.Arn  ### THIS FUNCTION
-#     OidcClientId:    !Sub "sts.amazonaws.com"
-#     OidcProviderUrl: !Sub "https://token.actions.githubusercontent.com"
-#     OidcThumbPrint:  !Sub "6938fd4d98bab03faadb97b34396831e3780aea1"
-#     OidcProviderArn: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
-#     AwsAccountId: !Sub "${AWS::AccountId}"
-#     DeleteOidcWithCustomResource: false # default is false: do not delete the "real" OIDC as other stacks might need it!
-#     Timeout: 3 # seconds
-
-
 import boto3
 import logging
 import json
@@ -22,7 +8,19 @@ iam_client = boto3.client('iam')
 sts_client = boto3.client('sts')
 
 def send_response(status, reason, physical_resource_id, data, event):
-    """ Send response to CloudFormation """
+    """
+    Sends a response to CloudFormation after processing the custom resource request.
+    
+    Args:
+        status (str): The status of the operation ('SUCCESS' or 'FAILED').
+        reason (str): A message explaining the result of the operation.
+        physical_resource_id (str): The unique identifier for the resource, typically ARN or URL.
+        data (dict): Additional data to include in the response to CloudFormation.
+        event (dict): The CloudFormation event object, contains details about the request.
+    
+    Returns:
+        None: Sends a response to CloudFormation using a PUT request.
+    """
     response_body = {
         "Status": status,
         "Reason": reason,
@@ -42,6 +40,28 @@ def send_response(status, reason, physical_resource_id, data, event):
 
 
 def lambda_handler(event, context):
+    """
+    Lambda handler function to manage the creation and deletion of an OpenID Connect (OIDC) provider.
+    
+    The function is triggered by a CloudFormation custom resource. It can handle:
+        1. The creation of a new OIDC provider using AWS IAM.
+        2. Deletion of an existing OIDC provider if certain conditions are met.
+    
+    Args:
+        event (dict): The CloudFormation event that triggers the Lambda function.
+        context (LambdaContext): The runtime context of the Lambda function.
+    
+    Returns:
+        dict: The response sent back to CloudFormation, indicating success or failure.
+        
+    CloudFormation Custom Resource Parameters:
+        - OidcProviderUrl (str): The URL of the OIDC provider (default: "https://token.actions.githubusercontent.com").
+        - OidcClientId (str): The client ID to associate with the provider (default: "sts.amazonaws.com").
+        - OidcThumbPrint (str): The thumbprint of the OIDC provider's SSL certificate (default: "6938fd4d98bab03faadb97b34396831e3780aea1").
+        - OidcProviderArn (str): The ARN of the OIDC provider (dynamically constructed if not provided).
+        - DeleteOidcWithCustomResource (bool): Whether to delete the OIDC provider on stack deletion (default: False).
+        - Timeout (int): Timeout in seconds for the operation (default: 3).
+    """
     # Hole die OIDC URL aus den ResourceProperties
     oidc_url = event['ResourceProperties'].get("OidcProviderUrl", "https://token.actions.githubusercontent.com")
     oidc_client_id = event['ResourceProperties'].get("OidcClientId", "sts.amazonaws.com")
