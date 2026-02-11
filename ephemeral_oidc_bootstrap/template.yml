@@ -19,12 +19,13 @@ Resources:
       # Code:
       #   S3Bucket: myBucket
       #   S3Key: myLambdaCode.zip
-  RunMyLambdaOidcProviderCheck: ##
-    Type: Custom::OidcProviderCheck
-    Properties:
-      ServiceToken: !GetAtt OidcProviderCheckLambda.Arn
-      OidcProviderArn: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
       Timeout: 10 # seconds
+  # RunMyLambdaOidcProviderCheck: ##
+  #   Type: Custom::OidcProviderCheck
+  #   Properties:
+  #     ServiceToken: !GetAtt OidcProviderCheckLambda.Arn
+  #     OidcProviderArn: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+  #     Timeout: 10 # seconds
 #      MemorySize: 128
 
   OidcProviderCreationRole:
@@ -44,7 +45,9 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - iam:ListOpenIDConnectProviders
                   - iam:CreateOpenIDConnectProvider
+                  - iam:ListOpenIDConnectProviders
+                  - iam:TagOpenIDConnectProvider
                 Resource: "*"
+
 
