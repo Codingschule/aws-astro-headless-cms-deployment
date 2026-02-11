@@ -12,6 +12,8 @@ def send_response(status, reason, physical_resource_id, data, event):
         'Status': status,
         'Reason': reason,
         'PhysicalResourceId': physical_resource_id,
+        'RequestId': event['RequestId'],  # RequestId aus dem Event
+        'StackId': event['StackId'],  # StackId aus dem Event
         'Data': data
     }
     response_url = event['ResponseURL']  # Die ResponseURL, die von CloudFormation übergeben wird
