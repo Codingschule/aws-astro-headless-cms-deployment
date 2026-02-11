@@ -53,7 +53,8 @@ Resources:
                   - iam:CreateOpenIDConnectProvider
                   - iam:ListOpenIDConnectProviders
                   - iam:TagOpenIDConnectProvider
-                  - iam:DeleteOpenIDConnectProvider  # Neue Berechtigung für das Löschen des Providers
+                  - iam:DeleteOpenIDConnectProvider
+                  - tag:TagResources
+                  - tag:GetResources
+                #Resource: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/*"
                 Resource: "*"
-
-
