@@ -20,11 +20,12 @@ def lambda_handler(event, context):
         
         # Erfolgreiche Antwort zurückgeben
         return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'message': 'OIDC Provider erfolgreich erstellt!',
+            'Status': 'SUCCESS',  # Benachrichtige CloudFormation über den Erfolg
+            'Reason': 'OIDC Provider successfully created',
+            'PhysicalResourceId': response['OpenIDConnectProviderArn'],  # Die ARN des Providers
+            'Data': {
                 'OpenIDConnectProviderArn': response['OpenIDConnectProviderArn']
-            })
+            }
         }
 
     except iam_client.exceptions.EntityAlreadyExistsException as e:
@@ -32,11 +33,13 @@ def lambda_handler(event, context):
         logging.error(f"Error: OIDC Provider already exists: {str(e)}")
         
         return {
-            'statusCode': 400,
-            'body': json.dumps({
-                'message': f"OIDC Provider with URL {oidc_url} already exists.",
-                'error': str(e)
-            })
+            'Status': 'SUCCESS',  # Erfolgreich, aber der Provider existiert bereits
+            'Reason': f"OIDC Provider with URL {oidc_url} already exists.",
+            'PhysicalResourceId': oidc_url,  # Verwende die URL als eindeutigen Bezeichner
+            'Data': {
+                'Message': f"OIDC Provider already exists",
+                'OidcProviderArn': oidc_url
+            }
         }
 
     except Exception as e:
@@ -44,8 +47,10 @@ def lambda_handler(event, context):
         logging.error(f"Error: {str(e)}")
         
         return {
-            'statusCode': 500,
-            'body': json.dumps({
-                'error': str(e)
-            })
+            'Status': 'FAILED',  # Fehlerstatus
+            'Reason': str(e),
+            'PhysicalResourceId': oidc_url,  # Verwende die URL als Identifikator
+            'Data': {
+                'Error': str(e)
+            }
         }
