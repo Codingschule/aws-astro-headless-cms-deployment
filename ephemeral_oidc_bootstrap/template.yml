@@ -29,7 +29,7 @@ Resources:
       OidcClientId:    !Sub "sts.amazonaws.com"
       OidcProviderUrl: !Sub "https://token.actions.githubusercontent.com"
       OidcThumbPrint:  !Sub "6938fd4d98bab03faadb97b34396831e3780aea1"
-      foobar:  "123"
+      ManageTags:  True
       DeleteOidcWithCustomResource: false # default is false: do not delete the "real" OIDC as other stacks might need it!
       Timeout: 3 # seconds
 
@@ -52,11 +52,13 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - iam:CreateOpenIDConnectProvider
                   - iam:ListOpenIDConnectProviders
-                  - iam:TagOpenIDConnectProvider
+                  - iam:CreateOpenIDConnectProvider
                   - iam:DeleteOpenIDConnectProvider
+                  - iam:TagOpenIDConnectProvider
+                  - iam:UntagOpenIDConnectProvider
                   - tag:TagResources
+                  - tag:UntagResources
                   - tag:GetResources
                 Resource: "*"
         - PolicyName: "AllowCloudWatchLogs"
