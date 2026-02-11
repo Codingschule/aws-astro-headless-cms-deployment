@@ -10,6 +10,9 @@ tagging_client = boto3.client('resourcegroupstaggingapi')  # Verwende den richti
 
 logging.basicConfig(level=logging.INFO)
 
+logging.error("LOGGING WORKS TEST_ERROR")
+
+
 def send_response(status, reason, physical_resource_id, data, event):
     """
     Sends a response to CloudFormation after processing the custom resource request.
@@ -29,8 +32,8 @@ def send_response(status, reason, physical_resource_id, data, event):
         r = requests.put(response_url, json=response_body)
         logging.info(f"CloudFormation response sent: {r.status_code}")
     except Exception as e:
-        logging.error(f"Failed to send response to CloudFormation: {str(e)},\n\ {response_body}")
-        raise e
+        logging.error(f"Failed to send response to CloudFormation: {str(e)},\n {response_body}")
+        raise Exception(f"Failed to send response to CloudFormation: {str(e)},\n {response_body}")
 
 
 def get_stack_name_from_arn(stack_arn):
@@ -43,6 +46,8 @@ def create_or_delete_oidc_provider(oidc_url, oidc_client_id, oidc_thumb_print, s
     """
     Manages the creation or deletion of the OIDC provider.
     """
+    logging.info(f"create_or_delete_oidc_provider() start")
+                
     account_id = sts_client.get_caller_identity()['Account']
 
     # Verwende urlparse, um die Domain zuverlässig zu extrahieren
@@ -52,8 +57,10 @@ def create_or_delete_oidc_provider(oidc_url, oidc_client_id, oidc_thumb_print, s
     # Erstelle den OIDC ARN dynamisch
     oidc_arn = f"arn:aws:iam::{account_id}:oidc-provider/{oidc_domain}"
 
+    logging.info(f"create_or_delete_oidc_provider() try1")
     try:
         if event['RequestType'] in ['Create', 'Update']:
+            logging.info(f"create_or_delete_oidc_provider() try2")
             try:
                 response = iam_client.create_open_id_connect_provider(
                     Url=oidc_url,
@@ -75,8 +82,7 @@ def create_or_delete_oidc_provider(oidc_url, oidc_client_id, oidc_thumb_print, s
             logging.error(f"unknown Event Requesttype! Event: {event}")
             send_response("FAILED", f"Error: {str(e)}", oidc_url, {"Error": str(e)}, event)
             raise e
-
-
+        
     except Exception as e:
         logging.error(f"Error creating or deleting OIDC provider: {str(e)}")
         send_response("FAILED", f"Error: {str(e)}", oidc_url, {"Error": str(e)}, event)
