@@ -2,18 +2,23 @@ import boto3
 import json
 
 def lambda_handler(event, context):
-    client = boto3.client('iam')
-    account_id = client.get_caller_identity()['Account']
+    # Verwende den sts Client, um die Account-ID zu bekommen
+    sts_client = boto3.client('sts')
+    account_id = sts_client.get_caller_identity()['Account']
 
-# Generiere die ARN des OIDC Providers basierend auf der Account ID
-    
+    # Generiere die ARN des OIDC Providers basierend auf der Account ID
     oidc_provider_arn = f"arn:aws:iam::{account_id}:oidc-provider/token.actions.githubusercontent.com"
 
-    # Die ARN des OIDC-Providers, die wir benötigen
-    oidc_provider_arn = event['ResourceProperties'].get('OidcProviderArn', oidc_provider_arn)
-    # oidc_provider_arn = event['ResourceProperties']['OidcProviderArn']
+    # Versuche, 'ResourceProperties' aus dem Event zu holen
+    resource_properties = event.get('ResourceProperties', {})
+    
+    # Hole die OIDC Provider ARN, falls verfügbar, ansonsten die generierte ARN verwenden
+    oidc_provider_arn = resource_properties.get('OidcProviderArn', oidc_provider_arn)
 
     try:
+        # IAM Client zum Erstellen und Abfragen von OIDC Providern
+        client = boto3.client('iam')
+
         # Prüfe, ob der OIDC-Provider existiert
         response = client.list_openid_connect_providers()
         exists = any(provider_arn == oidc_provider_arn for provider_arn in response['OpenIDConnectProviderList'])
