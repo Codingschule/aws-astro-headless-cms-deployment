@@ -16,6 +16,11 @@ Resources:
       Runtime: python3.13
       CodeUri: ./py_create_oidc
       Timeout: 3 # seconds
+      LoggingConfig:
+        LogFormat: "Text" # DEFAULT ### NO LOGLEVEL POSSIBLE
+#        SystemLogLevel: "DEBUG"
+#        LogFormat: "JSON"
+
 
   MyVirtualOidcProvider:
     Type: Custom::OidcProviderCheck
@@ -24,6 +29,7 @@ Resources:
       OidcClientId:    !Sub "sts.amazonaws.com"
       OidcProviderUrl: !Sub "https://token.actions.githubusercontent.com"
       OidcThumbPrint:  !Sub "6938fd4d98bab03faadb97b34396831e3780aea1"
+      foobar:  "123"
       DeleteOidcWithCustomResource: false # default is false: do not delete the "real" OIDC as other stacks might need it!
       Timeout: 3 # seconds
 

@@ -8,10 +8,17 @@ iam_client = boto3.client('iam')
 sts_client = boto3.client('sts')
 tagging_client = boto3.client('resourcegroupstaggingapi')  # Verwende den richtigen Tagging-Client
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.warning)
 
-logging.error("LOGGING WORKS TEST_ERROR")
+logging.error("LOGGING WORKS logging.error")
+logging.critical("LOGGING WORKS logging.critical")
+logging.warning("LOGGING WORKS logging.warning")
 
+logging.debug("LOGGING WORKS logging.debug") # IGNORED BY CLOUDWATCH
+logging.info("LOGGING WORKS logging.info") # IGNORED BY CLOUDWATCH
+
+DEBUG_NO_RESPONSE = False
+SEPERATOR = "+"
 
 def send_response(status, reason, physical_resource_id, data, event):
     """
@@ -28,12 +35,18 @@ def send_response(status, reason, physical_resource_id, data, event):
     }
     response_url = event['ResponseURL']
 
+
     try:
-        r = requests.put(response_url, json=response_body)
-        logging.info(f"CloudFormation response sent: {r.status_code}")
+        if DEBUG_NO_RESPONSE:
+            logging.warning(f"####\nDEBUG_NO_RESPONSE\n####\nStatus:{status}\nreason:{reason}\nphysical_resource_id:{physical_resource_id}\ndata:{data}\nevent:{event}")
+            if status == "FAILED":
+                raise Exception(f"####\nDEBUG_NO_RESPONSE\n####\nStatus:{status}\nreason:{reason}\nphysical_resource_id:{physical_resource_id}\ndata:{data}\nevent:{event}")
+        else:
+            r = requests.put(response_url, json=response_body)
+            logging.warning(f"CloudFormation response sent: {r.status_code}")
     except Exception as e:
         logging.error(f"Failed to send response to CloudFormation: {str(e)},\n {response_body}")
-        raise Exception(f"Failed to send response to CloudFormation: {str(e)},\n {response_body}")
+        raise Exception(f"Failed to send response to CloudFormation: {str(e)},\n {response_body}\nDEBUG_NO_RESPONSE={DEBUG_NO_RESPONSE}\nStatus:{status}\nreason:{reason}\nphysical_resource_id:{physical_resource_id}\ndata:{data}\nevent:{event}")
 
 
 def get_stack_name_from_arn(stack_arn):
@@ -46,7 +59,7 @@ def create_or_delete_oidc_provider(oidc_url, oidc_client_id, oidc_thumb_print, s
     """
     Manages the creation or deletion of the OIDC provider.
     """
-    logging.info(f"create_or_delete_oidc_provider() start")
+    logging.warning(f"create_or_delete_oidc_provider() start")
                 
     account_id = sts_client.get_caller_identity()['Account']
 
@@ -57,10 +70,10 @@ def create_or_delete_oidc_provider(oidc_url, oidc_client_id, oidc_thumb_print, s
     # Erstelle den OIDC ARN dynamisch
     oidc_arn = f"arn:aws:iam::{account_id}:oidc-provider/{oidc_domain}"
 
-    logging.info(f"create_or_delete_oidc_provider() try1")
+    logging.warning(f"create_or_delete_oidc_provider() try1")
     try:
         if event['RequestType'] in ['Create', 'Update']:
-            logging.info(f"create_or_delete_oidc_provider() try2")
+            logging.warning(f"create_or_delete_oidc_provider() try2")
             try:
                 response = iam_client.create_open_id_connect_provider(
                     Url=oidc_url,
@@ -71,7 +84,7 @@ def create_or_delete_oidc_provider(oidc_url, oidc_client_id, oidc_thumb_print, s
                 return response, oidc_arn
 
             except iam_client.exceptions.EntityAlreadyExistsException:
-                logging.info(f"OIDC Provider already exists: {oidc_url}")
+                logging.warning(f"OIDC Provider already exists: {oidc_url}")
                 return {'OpenIDConnectProviderArn': oidc_arn}, oidc_arn
 
         elif event['RequestType'] == 'Delete':
@@ -92,6 +105,8 @@ def update_tags_for_oidc_provider(oidc_arn, stack_name, event):
     """
     Update or remove the tags for the OIDC provider using resourcegroupstaggingapi
     """
+
+    logging.warning(f"update_tags_for_oidc_provider() try")
     try:
         # # 1. Setze Created-By-Stack Tag für Create/Update
         # if event['RequestType'] in ['Create', 'Update']:
@@ -112,13 +127,15 @@ def update_tags_for_oidc_provider(oidc_arn, stack_name, event):
 
         # 2. Hole den 'Used-By-Stacks' Tag und aktualisiere ihn sicher
         response = tagging_client.get_resources(TagFilters=[{'Key': 'Used-By-Stacks'}])
+        logging.warning(f"update_tags_for_oidc_provider() response {response}")
         # used_by_stacks_tag = response.get('ResourceTagMappingList', [])
 
         # Sicherstellen, dass wir einen gültigen Tagwert haben, bevor wir 'split()' verwenden
         tag_value = response['ResourceTagMappingList'][0]['Tags'][0].get('Value', '')
-        logging.debug(f"old existing_stacks: {tag_value}")
+        logging.warning(f"update_tags_for_oidc_provider() tag_value={tag_value}")
 
-        set_existing_stacks = set(tag_value.split(',')) if tag_value else set()
+        set_existing_stacks = set(tag_value.split(SEPERATOR)) if tag_value else set()
+        logging.warning(f"update_tags_for_oidc_provider() set_existing_stacks={set_existing_stacks}")
         if event['RequestType'] in ['Create', 'Update']:
             set_existing_stacks.add(stack_name)
 
@@ -127,21 +144,24 @@ def update_tags_for_oidc_provider(oidc_arn, stack_name, event):
 
 
         # Sicherstellen, dass der 'Used-By-Stacks' Tag korrekt erstellt oder aktualisiert wird
-        s_new_used_stacks = ",".join(set_existing_stacks).strip()
+        s_new_used_stacks = SEPERATOR.join(set_existing_stacks).strip()
+        logging.warning(f"update_tags_for_oidc_provider() s_new_used_stacks={s_new_used_stacks}")
 
         # Tag setzen, wenn der resultierende String nicht leer ist
+        logging.warning(f"update_tags_for_oidc_provider() s_new_used_stacks={s_new_used_stacks}")
         if s_new_used_stacks != "":  # Stelle sicher, dass der String nicht leer ist
-            tagging_client.tag_resources(
+            r2 = tagging_client.tag_resources(
                 ResourceARNList=[oidc_arn],
                 Tags={'Used-By-Stacks': s_new_used_stacks}
             )
         else:
-            tagging_client.untag_resources(
+            r2 = tagging_client.untag_resources(
                 ResourceARNList=[oidc_arn],
                 TagKeys=['Used-By-Stacks']
             )
+        logging.warning(f"update_tags_for_oidc_provider() r2={r2}")
 
-        logging.debug(f"Updated set_existing_stacks: {s_new_used_stacks}")
+        logging.warning(f"OK Updated set_existing_stacks: {s_new_used_stacks}")
 
     except Exception as e:
         logging.error(f"Error updating tags for OIDC provider: {str(e)}")
@@ -155,21 +175,29 @@ def lambda_handler(event, context):
     oidc_url = event['ResourceProperties'].get("OidcProviderUrl", "https://token.actions.githubusercontent.com")
     oidc_client_id = event['ResourceProperties'].get("OidcClientId", "sts.amazonaws.com")
     oidc_thumb_print = event['ResourceProperties'].get("OidcThumbPrint", "6938fd4d98bab03faadb97b34396831e3780aea1")
-    
+
     stack_id = event['StackId']
     stack_name = get_stack_name_from_arn(stack_id)
     
     delete_oidc = True if str(event['ResourceProperties'].get("DeleteOidcWithCustomResource", False)).lower() in ["true", "1"] else False
 
-    logging.info(f"EventType: {event['RequestType']} - StackId: {stack_id} - StackName: {stack_name} - DeleteOidcWithCustomResource: {delete_oidc}")
+    global DEBUG_NO_RESPONSE
+    DEBUG_NO_RESPONSE = True if str(event['ResourceProperties'].get("DEBUG_NO_RESPONSE", False)).lower().strip() in ["true", "1"] else False
 
+
+    logging.warning(f"EventType: {event['RequestType']} - StackId: {stack_id} - StackName: {stack_name} - DeleteOidcWithCustomResource: {delete_oidc}")
+
+    logging.warning(f"lambda_handler() try")
     try:
+        logging.warning(f"lambda_handler() create_or_delete_oidc_provider")
         provider_response, oidc_arn = create_or_delete_oidc_provider(
             oidc_url, oidc_client_id, oidc_thumb_print, stack_id, stack_name, delete_oidc, event
         )
 
+        logging.warning(f"lambda_handler() update_tags_for_oidc_provider")
         update_tags_for_oidc_provider(oidc_arn, stack_name, event)
 
+        logging.warning(f"lambda_handler() send_response")
         send_response(
             "SUCCESS",
             f"OIDC Provider {event['RequestType']} successfully processed.",
@@ -179,5 +207,6 @@ def lambda_handler(event, context):
         )
 
     except Exception as e:
+        logging.warning(f"lambda_handler() except")
         send_response("FAILED", f"Error: {str(e)}", oidc_url, {"Error": str(e)}, event)
         raise e
