@@ -19,14 +19,15 @@ Resources:
       # Code:
       #   S3Bucket: myBucket
       #   S3Key: myLambdaCode.zip
-      Timeout: 10 # seconds
-  # RunMyLambdaOidcProviderCheck: ##
-  #   Type: Custom::OidcProviderCheck
-  #   Properties:
-  #     ServiceToken: !GetAtt OidcProviderCheckLambda.Arn
-  #     OidcProviderArn: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
-  #     Timeout: 10 # seconds
-#      MemorySize: 128
+      Timeout: 3 # seconds
+  RunMyLambdaOidcProviderCheck: ##
+    Type: Custom::OidcProviderCheck
+    Properties:
+      ServiceToken: !GetAtt OidcProviderCheckLambda.Arn
+      OidcProviderArn: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+      DeleteOidcWithCustomResource: false
+      Timeout: 3 # seconds
+    #  MemorySize: 128
 
   OidcProviderCreationRole:
     Type: AWS::IAM::Role
@@ -48,6 +49,7 @@ Resources:
                   - iam:CreateOpenIDConnectProvider
                   - iam:ListOpenIDConnectProviders
                   - iam:TagOpenIDConnectProvider
+                  - iam:DeleteOpenIDConnectProvider  # Neue Berechtigung für das Löschen des Providers
                 Resource: "*"
 
 
