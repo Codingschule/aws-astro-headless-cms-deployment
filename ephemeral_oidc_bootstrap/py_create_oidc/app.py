@@ -4,6 +4,7 @@ import json
 import requests
 
 iam_client = boto3.client('iam')
+sts_client = boto3.client('sts')
 
 def send_response(status, reason, physical_resource_id, data, event):
     """ Send response to CloudFormation """
@@ -27,10 +28,16 @@ def send_response(status, reason, physical_resource_id, data, event):
 
 def lambda_handler(event, context):
     # Hole die OIDC URL aus den ResourceProperties
-    oidc_url =         event['ResourceProperties'].get(   "OidcProviderUrl",  "https://token.actions.githubusercontent.com")
-    oidc_client_id =   event['ResourceProperties'].get(   "OidcClientId",     "sts.amazonaws.com")
-    oidc_thumb_print = event['ResourceProperties'].get(   "OidcThumbPrint",   "6938fd4d98bab03faadb97b34396831e3780aea1")
-    oidc_arn =         event['ResourceProperties'].get(   "OidcProviderArn", f"arn:aws:iam::${event['ResourceProperties']['AwsAccountId']}:oidc-provider/token.actions.githubusercontent.com")
+    oidc_url = event['ResourceProperties'].get("OidcProviderUrl", "https://token.actions.githubusercontent.com")
+    oidc_client_id = event['ResourceProperties'].get("OidcClientId", "sts.amazonaws.com")
+    oidc_thumb_print = event['ResourceProperties'].get("OidcThumbPrint", "6938fd4d98bab03faadb97b34396831e3780aea1")
+    
+    # Hole die AWS Account ID durch sts
+    account_id = sts_client.get_caller_identity()['Account']
+    
+    # Erstelle den OIDC ARN dynamisch
+    oidc_arn = f"arn:aws:iam::{account_id}:oidc-provider/token.actions.githubusercontent.com"
+    
     # Hole den benutzerdefinierten Parameter DeleteOidcWithCustomResource
     delete_oidc = event['ResourceProperties'].get("DeleteOidcWithCustomResource", False)  # Standardwert ist False
     stack_id = event['StackId']  # StackId aus dem Event
