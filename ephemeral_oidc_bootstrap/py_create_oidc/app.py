@@ -1,7 +1,22 @@
+# how to use within CloudFormation/Sam:
+# MyVirtualOidcProvider: ##
+#   Type: Custom::OidcProviderCheck
+#   Properties:
+#     ServiceToken: !GetAtt OidcProviderCheckLambda.Arn  ### THIS FUNCTION
+#     OidcClientId:    !Sub "sts.amazonaws.com"
+#     OidcProviderUrl: !Sub "https://token.actions.githubusercontent.com"
+#     OidcThumbPrint:  !Sub "6938fd4d98bab03faadb97b34396831e3780aea1"
+#     OidcProviderArn: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+#     AwsAccountId: !Sub "${AWS::AccountId}"
+#     DeleteOidcWithCustomResource: false # default is false: do not delete the "real" OIDC as other stacks might need it!
+#     Timeout: 3 # seconds
+
+
 import boto3
 import logging
 import json
 import requests
+from urllib.parse import urlparse
 
 iam_client = boto3.client('iam')
 sts_client = boto3.client('sts')
@@ -35,8 +50,12 @@ def lambda_handler(event, context):
     # Hole die AWS Account ID durch sts
     account_id = sts_client.get_caller_identity()['Account']
     
+    # Verwende urlparse, um die Domain zuverlässig zu extrahieren
+    parsed_url = urlparse(oidc_url)
+    oidc_domain = parsed_url.netloc  # Extrahiert den Domain-Teil ohne Protokoll und Slash
+
     # Erstelle den OIDC ARN dynamisch
-    oidc_arn = f"arn:aws:iam::{account_id}:oidc-provider/token.actions.githubusercontent.com"
+    oidc_arn = f"arn:aws:iam::{account_id}:oidc-provider/{oidc_domain}"
     
     # Hole den benutzerdefinierten Parameter DeleteOidcWithCustomResource
     delete_oidc = event['ResourceProperties'].get("DeleteOidcWithCustomResource", False)  # Standardwert ist False

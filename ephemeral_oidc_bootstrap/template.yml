@@ -20,12 +20,16 @@ Resources:
       #   S3Bucket: myBucket
       #   S3Key: myLambdaCode.zip
       Timeout: 3 # seconds
-  RunMyLambdaOidcProviderCheck: ##
+  MyVirtualOidcProvider: ##
     Type: Custom::OidcProviderCheck
     Properties:
       ServiceToken: !GetAtt OidcProviderCheckLambda.Arn
-      OidcProviderArn: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
-      DeleteOidcWithCustomResource: false
+      OidcClientId:    !Sub "sts.amazonaws.com"
+      OidcProviderUrl: !Sub "https://token.actions.githubusercontent.com"
+      OidcThumbPrint:  !Sub "6938fd4d98bab03faadb97b34396831e3780aea1"
+#     OidcProviderArn: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+#     AwsAccountId: !Sub "${AWS::AccountId}"
+      DeleteOidcWithCustomResource: false # default is false: do not delete the "real" OIDC as other stacks might need it!
       Timeout: 3 # seconds
     #  MemorySize: 128
 
