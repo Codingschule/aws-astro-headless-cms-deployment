@@ -1,0 +1,251 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: |
+  Static Website hosted on AWS, deployable by Github Actions via OIDC.
+  
+  Hosting:
+  Private Bucket with Policy and OAC-enabled Distribution for authorized GetObject.
+
+  Building:
+  GitubRole trusts Github via OIDC to request tokens for the repository listed
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function: # Backend
+    Timeout: 3
+
+Parameters:
+  DeployUniqueOidcProdiverForThisAccount:
+    Type: String
+    Default: "false" ## 
+    Description: "Create the OIDC Provider (only 1 per region allowed)?"
+    AllowedValues:
+      - "true"
+      - "false"
+  AppName: 
+    Type: String
+    Default: "cs-itp-ssg-cd-sam"
+    Description: "AppName, used for BucketName, lowercase only!"
+  AuthorizedGithubRepository: 
+    Type: String
+    Default: "Codingschule/aws-astro-headless-cms-deployment"
+
+Conditions:
+  IsOidcNeeded: !Equals [ !Ref DeployUniqueOidcProdiverForThisAccount, "true" ]
+
+Resources:
+  MyWebBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AppName}-pub-dist-${AWS::Region}-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  MyOac:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-oac"
+        Description: "OAC for CloudFront to access S3"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: "index.html"
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt MyWebBucket.RegionalDomainName
+            OriginAccessControlId: !Ref MyOac
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          CachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6"
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+        HttpVersion: http2
+        PriceClass: PriceClass_100
+
+  BucketPolicyCloudFront:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MyWebBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipal
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: "s3:GetObject"
+            Resource: !Sub "${MyWebBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+
+  # GitHub Actions OIDC Role
+  GitubRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AppName}-github-actions-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: # Indirect reference to GitHubOidcProvider with url https://token.actions.githubusercontent.com
+              Federated: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+            Action: "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:sub: # several entries possible
+                  - !Sub "repo:${AuthorizedGithubRepository}:ref:refs/heads/dev"
+                  - !Sub "repo:${AuthorizedGithubRepository}:ref:refs/pull/*"
+              StringEqualsIgnoreCase:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+      Policies:
+        - PolicyName: OidcSafetyPolicy # by default, DENY ALL! ## change for role chaining
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: OidcSafeties
+                Effect: Deny
+                Action:
+                  - sts:AssumeRole
+                Resource: "*"
+        - PolicyName: !Sub "${AppName}-GithubDeployPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket # for --delete to plan what to clean up?
+                Resource:
+                  - !GetAtt MyWebBucket.Arn
+                  - !Sub "${MyWebBucket.Arn}/*"
+              - Effect: Allow
+                Action:
+                  - cloudfront:CreateInvalidation
+                Resource: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: IsOidcNeeded
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+
+###############################################################################
+#Resources: # BACKEND #
+  MyGuestbookTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: guestbook
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  MyGuestbookGet:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: backend/guestbook/
+      Handler: app.lambda_handler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Events:
+        IpCheck:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /guestbook
+            Method: get
+            # Auth:
+            #   AuthorizationType: NONE  # Keine Authentifizierung erforderlich
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref MyGuestbookTable
+      Policies:
+        - DynamoDBReadPolicy:  # Diese Policy gibt der Lambda-Funktion Leserechte für DynamoDB
+            TableName: !Ref MyGuestbookTable
+            
+  MyGuestbookPost:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: backend/guestbook/
+      Handler: app.lambda_handler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Events:
+        HelloWorld:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /guestbook
+            Method: post
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref MyGuestbookTable
+      Policies:
+        - DynamoDBWritePolicy:  # Diese Policy gibt der Lambda-Funktion Schreibrechte für DynamoDB
+            TableName: !Ref MyGuestbookTable
+
+Outputs:
+  GithubS3BucketName:
+    Value: !Sub "${MyWebBucket}" 
+  GithubCloudfrontDistributionId:
+    Value: !Sub "${CloudFrontDistribution}"
+  GithubAwsRoleArn:
+    Value: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AppName}-github-actions-role" 
+  GithubAwsRegion:
+    Value: !Sub "${AWS::Region}" 
+  CloudFrontDomainName:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+  DebugSyncCommand:
+    Value: !Sub "aws s3 sync ./frontend/dist/ s3://${MyWebBucket} --delete --role-arn arn:aws:iam::${AWS::AccountId}:role/${AppName}-github-actions-role" 
+  BlockedBucketWebsite:
+    Value: !Sub "http://${MyWebBucket}.s3-website-${AWS::Region}.amazonaws.com" 
+  BlockedBucketUrl:
+    Value: !Sub "https://${MyWebBucket}.s3.${AWS::Region}.amazonaws.com"
+
+  BackendGuestbookApi:
+    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook/"
+  BackendGuestbookGetFunction:
+    Description: "Hello World Lambda Function ARN"
+    Value: !GetAtt MyGuestbookGet.Arn
+  BackendGuestbookPostFunction:
+    Description: "Hello World Lambda Function ARN"
+    Value: !GetAtt MyGuestbookPost.Arn
+  HelloWorldFunctionIamRole:
+    Description: "Implicit IAM Role created for Hello World function"
+    Value: !GetAtt HelloWorldFunctionRole.Arn

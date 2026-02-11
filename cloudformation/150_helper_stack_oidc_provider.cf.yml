@@ -1,0 +1,19 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: |
+  A standalone OIDC-Provider for Github Actions.
+  Only 1 Instance per Region allowed,
+  So when deploying several Stacks that need the same OIDC, you should deploy it in a seperate stack to avoid errors and dependencies.
+  This stack. The Reference is indirect.
+  Suggestion: CALL STHIS STACK oidc-github
+
+Resources:
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+#    Condition: IsOidcNeeded
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
