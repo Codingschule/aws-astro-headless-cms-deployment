@@ -26,10 +26,16 @@ def send_response(status, reason, physical_resource_id, data, event):
 
 
 def lambda_handler(event, context):
-    # Hole die OIDC URL und die Option, ob gelöscht werden soll
-    oidc_url = event.get("OidcUrl", "https://token.actions.githubusercontent.com")
-    delete_oidc = event.get("DeleteOidcWithCustomResource", False)  # Standardwert ist False
+    # Hole die OIDC URL aus den ResourceProperties
+    oidc_url =         event['ResourceProperties'].get(   "OidcProviderUrl",  "https://token.actions.githubusercontent.com")
+    oidc_client_id =   event['ResourceProperties'].get(   "OidcClientId",     "sts.amazonaws.com")
+    oidc_thumb_print = event['ResourceProperties'].get(   "OidcThumbPrint",   "6938fd4d98bab03faadb97b34396831e3780aea1")
+    oidc_arn =         event['ResourceProperties'].get(   "OidcProviderArn", f"arn:aws:iam::${event['ResourceProperties']['AwsAccountId']}:oidc-provider/token.actions.githubusercontent.com")
+    # Hole den benutzerdefinierten Parameter DeleteOidcWithCustomResource
+    delete_oidc = event['ResourceProperties'].get("DeleteOidcWithCustomResource", False)  # Standardwert ist False
     stack_id = event['StackId']  # StackId aus dem Event
+
+    logging.info(f"DeleteOidcWithCustomResource: {delete_oidc}, StackId: {stack_id}, EventType: {event['RequestType']}")
 
     # Handle Create and Update (beides ist identisch)
     if event['RequestType'] in ['Create', 'Update']:
@@ -39,8 +45,8 @@ def lambda_handler(event, context):
                 # Versuche, den OIDC Provider zu erstellen
                 response = iam_client.create_open_id_connect_provider(
                     Url=oidc_url,
-                    ClientIDList=['sts.amazonaws.com'],
-                    ThumbprintList=['6938fd4d98bab03faadb97b34396831e3780aea1'],
+                    ClientIDList=[oidc_client_id],
+                    ThumbprintList=[oidc_thumb_print],
                     Tags=[
                         {'Key': 'Created-By-Stack', 'Value': event['StackId']},  # Füge StackId als Tag hinzu
                         {'Key': 'Created-By', 'Value': 'Lambda'}
@@ -76,12 +82,14 @@ def lambda_handler(event, context):
 
     # Handle Delete
     elif event['RequestType'] == 'Delete':
+        logging.info("Delete request received.")
+
         # Prüfen, ob der OIDC-Provider gelöscht werden soll
         if delete_oidc and event['StackId'] == stack_id:
             try:
                 # Lösche den OIDC Provider, wenn er existiert
                 response = iam_client.delete_open_id_connect_provider(
-                    OpenIDConnectProviderArn=oidc_url
+                    OpenIDConnectProviderArn=oidc_arn
                 )
                 send_response(
                     "SUCCESS",
