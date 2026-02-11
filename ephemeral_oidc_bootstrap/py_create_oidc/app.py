@@ -77,8 +77,9 @@ def lambda_handler(event, context):
     # Erstelle den OIDC ARN dynamisch
     oidc_arn = f"arn:aws:iam::{account_id}:oidc-provider/{oidc_domain}"
     
-    # Hole den benutzerdefinierten Parameter DeleteOidcWithCustomResource
-    delete_oidc = event['ResourceProperties'].get("DeleteOidcWithCustomResource", False)  # Standardwert ist False
+    # There can be only 1 OIDC Provider per AWS Account, therefore we should NOT delete it upon Stack deletion, as other Stacks might use the OIDC Provider
+    delete_oidc = True if str(event['ResourceProperties'].get("DeleteOidcWithCustomResource", False)).lower() in ["true", "1"] else False  # default = False
+    
     stack_id = event['StackId']  # StackId aus dem Event
 
     logging.info(f"DeleteOidcWithCustomResource: {delete_oidc}, StackId: {stack_id}, EventType: {event['RequestType']}")
