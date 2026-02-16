@@ -2,12 +2,13 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: |
   Static Website hosted on AWS, deployable by Github Actions via OIDC.
-  
   Hosting:
   Private Bucket with Policy and OAC-enabled Distribution for authorized GetObject.
-
   Building:
   GitubRole trusts Github via OIDC to request tokens for the repository listed
+  CustomResources:
+  The Nested OIDC-Stack creates a CustomResource which ensures the existance of 1 Stack-Independent Account-unique OIDC-Connector.
+  This enables this Stack to be deployed multiple times while only 1 OIDC connector exists.
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
@@ -15,13 +16,6 @@ Globals:
     Timeout: 3
 
 Parameters:
-  DeployUniqueOidcProdiverForThisAccount:
-    Type: String
-    Default: "false" ## 
-    Description: "Create the OIDC Provider (only 1 per region allowed)?"
-    AllowedValues:
-      - "true"
-      - "false"
   AppName: 
     Type: String
     Default: "cs-itp-ssg-cd-sam"
@@ -29,17 +23,36 @@ Parameters:
   AuthorizedGithubRepository: 
     Type: String
     Default: "Codingschule/aws-astro-headless-cms-deployment"
+  OidcConnectorDeployment: # replaced be CustomResource
+    Type: Number
+    Default: 0 ## 
+    Description: |
+      You need 1 Github-OIDC Provider per Account when using Github Actions with STS. Create it now?
+      0: None - I only have 1 Account and want several Stack instances: just create it manually or deploy 000_seperate_OIDC_github_connector.cf.yml. GitHub Actions wont work until you do!
+      1: Create it with this Stack - deploying this Stack twice will fail! OIDC-Connectors must be uniqie per Account.
+      2: CustomResource - I deploy multiple Instances of this Stack on multiple Accounts and need automation (more overhead, requires IAM CAPACBILITIES for nested stacks)
+    AllowedValues: [0,1,2]
 
 Conditions:
-  IsOidcNeeded: !Equals [ !Ref DeployUniqueOidcProdiverForThisAccount, "true" ]
+  IsOidcNeeded: !Equals [ !Ref OidcConnectorDeployment, "1" ]
+  IsCustomOidcNeeded: !Equals [ !Ref OidcConnectorDeployment, "2" ]
 
 Resources:
   MyTemporaryOidcCreatorStack:
-    Type: AWS::Serverless::Application
+    Type: AWS::Serverless::Application  # Nested Stack needs [default.deploy.parameters] capabilities = ["CAPABILITY_AUTO_EXPAND "] in samsonfig.toml
+    Condition: IsCustomOidcNeeded
     Properties:
-      Location: ./ephemeral_oidc_bootstrap # Pfad zu deinem zweiten SAM Template, das den OIDC-Provider anlegt
-      Parameters:
-        OidcProviderArn: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+      Location: ./ephemeral_oidc_bootstrap/template.yml # Pfad zu deinem zweiten SAM Template, das den OIDC-Provider anlegt
+
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: IsOidcNeeded
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
 
   MyWebBucket:
     Type: AWS::S3::Bucket
@@ -156,16 +169,6 @@ Resources:
                   - cloudfront:CreateInvalidation
                 Resource: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
 
-  GitHubOidcProvider:
-    Type: AWS::IAM::OIDCProvider
-    Condition: IsOidcNeeded
-    Properties:
-      Url: https://token.actions.githubusercontent.com
-      ClientIdList:
-        - sts.amazonaws.com
-      ThumbprintList:
-        - 6938fd4d98bab03faadb97b34396831e3780aea1
-
 ###############################################################################
 #Resources: # BACKEND #
   MyGuestbookTable:
@@ -239,10 +242,10 @@ Outputs:
     Value: !GetAtt CloudFrontDistribution.DomainName
   DebugSyncCommand:
     Value: !Sub "aws s3 sync ./frontend/dist/ s3://${MyWebBucket} --delete --role-arn arn:aws:iam::${AWS::AccountId}:role/${AppName}-github-actions-role" 
-  BlockedBucketWebsite:
-    Value: !Sub "http://${MyWebBucket}.s3-website-${AWS::Region}.amazonaws.com" 
-  BlockedBucketUrl:
-    Value: !Sub "https://${MyWebBucket}.s3.${AWS::Region}.amazonaws.com"
+  # BlockedBucketWebsite:
+  #   Value: !Sub "http://${MyWebBucket}.s3-website-${AWS::Region}.amazonaws.com" 
+  # BlockedBucketUrl:
+  #   Value: !Sub "https://${MyWebBucket}.s3.${AWS::Region}.amazonaws.com"
 
   BackendGuestbookApi:
     Description: "API Gateway endpoint URL for Prod stage for Hello World function"
@@ -253,6 +256,6 @@ Outputs:
   BackendGuestbookPostFunction:
     Description: "Hello World Lambda Function ARN"
     Value: !GetAtt MyGuestbookPost.Arn
-  HelloWorldFunctionIamRole:
-    Description: "Implicit IAM Role created for Hello World function"
-    Value: !GetAtt HelloWorldFunctionRole.Arn
+  # HelloWorldFunctionIamRole:
+  #   Description: "Implicit IAM Role created for Hello World function"
+  #   Value: !GetAtt HelloWorldFunctionRole.Arn
