@@ -1,0 +1,37 @@
+{"create":
+{
+  "RequestType": "Create",
+  "ServiceToken": "arn:aws:lambda:REGION:ACCOUNT_ID:function:OidcProviderCheckLambda",
+  "ResourceProperties": {
+    "OidcClientId": "sts.amazonaws.com",
+    "OidcProviderUrl": "https://token.actions.githubusercontent.com",
+    "OidcThumbPrint": "6938fd4d98bab03faadb97b34396831e3780aea1",
+    "DeleteOidcWithCustomResource": "false",
+    "DEBUG_NO_RESPONSE": "true"
+  },
+  "ResponseURL": "https://cloudformation-custom-resource-response-url",
+  "StackId": "arn:aws:cloudformation:REGION:ACCOUNT_ID:stack/STACK_NAME/STACK_ID",
+  "RequestId": "781be927-8bd5-4d71-844e-447ff8b544a4",
+  "LogicalResourceId": "MyVirtualOidcProvider",
+  "PhysicalResourceId": "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+}
+,
+"delete": 
+{
+  "RequestType": "Delete",
+  "ServiceToken": "arn:aws:lambda:REGION:ACCOUNT_ID:function:OidcProviderCheckLambda",
+  "ResourceProperties": {
+    "OidcClientId": "sts.amazonaws.com",
+    "OidcProviderUrl": "https://token.actions.githubusercontent.com",
+    "OidcThumbPrint": "6938fd4d98bab03faadb97b34396831e3780aea1",
+    "DeleteOidcWithCustomResource": "true",
+    "DEBUG_NO_RESPONSE": "true"
+  },
+  "ResponseURL": "https://cloudformation-custom-resource-response-url",
+  "StackId": "arn:aws:cloudformation:REGION:ACCOUNT_ID:stack/STACK_NAME/STACK_ID",
+  "RequestId": "781be927-8bd5-4d71-844e-447ff8b544a4",
+  "LogicalResourceId": "MyVirtualOidcProvider",
+  "PhysicalResourceId": "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+}
+
+}
