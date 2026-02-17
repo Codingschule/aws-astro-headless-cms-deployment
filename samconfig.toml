@@ -14,10 +14,10 @@ parallel = true
 lint = true
 
 [default.deploy.parameters]
-capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"]
+capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
 confirm_changeset = false
 #resolve_s3 = true
-stack_name = "sam-astro-200"
+stack_name = "astro-sam-202-oidc-customres"
 s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-btkyfgdhnica"
 
 [default.deploy.parameters.parameter_overrides]
