@@ -190,7 +190,7 @@ Resources:
     Properties:
       CodeUri: backend/guestbook/
       Handler: app.lambda_handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Architectures:
         - x86_64
       Events:
