@@ -1,5 +1,6 @@
 # Tickets
-Features to implement
+Always read `/spec-template.md` and understand the project, before working on tickets.
+THis file manages the Features to implement.
 
 ## AWS Cloud Landing Page (done)
 Old Version: Use CloudFormation for provisioning, save a static website into an S3 bucket
