@@ -13,13 +13,50 @@
 
 import { DynamoDBClient, PutItemCommand, ScanCommand } from "@aws-sdk/client-dynamodb";
 
+const DEBUG = process.env.DEBUG === 'true';
 const client = new DynamoDBClient({});
 
+function debugLog(message, data = null) {
+  if (!DEBUG) return;
+  if (data) {
+    console.warn(`[DEBUG] ${message}:`, JSON.stringify(data, null, 2));
+  } else {
+    console.warn(`[DEBUG] ${message}`);
+  }
+}
+
+function errorLog(message, data = null) {
+  if (data) {
+    console.error(`[ERROR] ${message}:`, JSON.stringify(data, null, 2));
+  } else {
+    console.error(`[ERROR] ${message}`);
+  }
+}
+
 export const lambda_handler = async (event, context) => {
+  debugLog('=== Lambda invoked ===');
+  debugLog('Event', event);
+  debugLog('Context (functionName, functionVersion, requestId)', {
+    functionName: context.functionName,
+    functionVersion: context.functionVersion,
+    requestId: context.requestId,
+    memoryLimitInMB: context.memoryLimitInMB,
+  });
+  debugLog('Environment Variables', {
+    TABLE_NAME: process.env.TABLE_NAME,
+    DEBUG: process.env.DEBUG,
+    AWS_REGION: process.env.AWS_REGION,
+    AWS_LAMBDA_FUNCTION_NAME: process.env.AWS_LAMBDA_FUNCTION_NAME,
+  });
+
   const method = event.httpMethod || 'GET';
+  debugLog('HTTP Method detected', method);
+
   const tableName = process.env.TABLE_NAME;
+  debugLog('TABLE_NAME from env', tableName);
 
   if (!tableName) {
+    errorLog('TABLE_NAME environment variable is NOT SET');
     return {
       statusCode: 500,
       body: JSON.stringify({ error: 'TABLE_NAME not set' }),
@@ -27,14 +64,21 @@ export const lambda_handler = async (event, context) => {
   }
 
   if (method === 'POST') {
+    debugLog('=== Handling POST request ===');
     let body;
     try {
-      body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
-    } catch (_) {
+      const rawBody = event.body;
+      debugLog('Raw event.body type', typeof rawBody);
+      debugLog('Raw event.body', rawBody);
+      body = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
+      debugLog('Parsed body', body);
+    } catch (e) {
+      errorLog('JSON parse failed', e.message);
       return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON' }) };
     }
     const { name, message } = body || {};
     if (!name || !message) {
+      errorLog('Missing required fields', { name, message });
       return { statusCode: 400, body: JSON.stringify({ error: 'Missing name or message' }) };
     }
     const id = Date.now().toString();
@@ -44,26 +88,35 @@ export const lambda_handler = async (event, context) => {
       message: { S: message },
       createdAt: { S: new Date().toISOString() },
     };
+    debugLog('Attempting to write to DynamoDB', { tableName, item });
     try {
       await client.send(new PutItemCommand({ TableName: tableName, Item: item }));
+      debugLog('DynamoDB PutItem SUCCESS', { id });
     } catch (e) {
+      errorLog('DynamoDB PutItem FAILED', e);
       return { statusCode: 500, body: JSON.stringify({ error: 'DB write failed' }) };
     }
     const response = { id, name, message, createdAt: item.createdAt.S };
+    debugLog('POST response', response);
     return { statusCode: 201, body: JSON.stringify(response) };
   }
 
   // GET
+  debugLog('=== Handling GET request ===');
+  debugLog('Attempting DynamoDB Scan', { tableName });
   try {
     const data = await client.send(new ScanCommand({ TableName: tableName }));
+    debugLog('DynamoDB Scan SUCCESS', { itemCount: data.Items?.length });
     const items = (data.Items || []).map(i => ({
       id: i.id.S,
       name: i.name.S,
       message: i.message.S,
       createdAt: i.createdAt.S
     }));
+    debugLog('GET response', { entryCount: items.length, items });
     return { statusCode: 200, body: JSON.stringify({ entries: items }) };
   } catch (e) {
+    errorLog('DynamoDB Scan FAILED', e);
     return { statusCode: 500, body: JSON.stringify({ error: 'DB read failed' }) };
   }
 };
