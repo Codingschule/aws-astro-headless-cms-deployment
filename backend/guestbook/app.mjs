@@ -15,7 +15,7 @@ import { DynamoDBClient, PutItemCommand, ScanCommand } from "@aws-sdk/client-dyn
 
 const client = new DynamoDBClient({});
 
-exports.lambda_handler = async (event, context) => {
+export const lambda_handler = async (event, context) => {
   const method = event.httpMethod || 'GET';
   const tableName = process.env.TABLE_NAME;
 
