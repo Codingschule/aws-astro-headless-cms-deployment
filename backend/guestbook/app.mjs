@@ -15,7 +15,7 @@ import { DynamoDBClient, PutItemCommand, ScanCommand } from "@aws-sdk/client-dyn
 
 const client = new DynamoDBClient({});
 
-export const lambdaHandler = async (event, context) => {
+exports.lambda_handler = async (event, context) => {
   const method = event.httpMethod || 'GET';
   const tableName = process.env.TABLE_NAME;
 
@@ -67,53 +67,3 @@ export const lambdaHandler = async (event, context) => {
     return { statusCode: 500, body: JSON.stringify({ error: 'DB read failed' }) };
   }
 };
-  // Basic routing for guestbook
-  const method = event.httpMethod || 'GET';
-  if (method === 'POST') {
-    let body;
-    try {
-      body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
-    } catch (_) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Invalid JSON in request body' }),
-      };
-    }
-    const { name, message } = body || {};
-    if (!name || !message) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Missing name or message' }),
-      };
-    }
-    const entry = {
-      id: Date.now().toString(),
-      name,
-      message,
-      createdAt: new Date().toISOString(),
-    };
-    // In a real app, persist to DB. Here we just echo back.
-    return {
-      statusCode: 201,
-      body: JSON.stringify(entry),
-    };
-  }
-  const response = {
-    statusCode: 200,
-    body: JSON.stringify({
-      message: 'hello world',
-    }),
-  };
-
-  return response;
-};
-    const response = {
-      statusCode: 200,
-      body: JSON.stringify({
-        message: 'hello world',
-      })
-    };
-
-    return response;
-  };
-  
