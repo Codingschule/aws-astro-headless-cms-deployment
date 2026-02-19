@@ -78,6 +78,25 @@ Resources:
         SigningBehavior: always
         SigningProtocol: sigv4
 
+  IndexHtmlFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: index-html-rewrite
+      AutoPublish: true
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+          if (!uri.includes('.') && !uri.endsWith('/')) {
+            request.uri = uri + '/';
+          }
+          if (uri.endsWith('/')) {
+            request.uri = uri + 'index.html';
+          }
+          return request;
+        }
+      Runtime: cloudfront-js-1.0
+
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -101,6 +120,9 @@ Resources:
             - HEAD
           Compress: true
           CachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6"
+          FunctionAssociations:
+            - FunctionARN: !GetAtt IndexHtmlFunction.FunctionARN
+              EventType: viewer-request
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
         HttpVersion: http2
@@ -190,7 +212,7 @@ Resources:
     Properties:
       CodeUri: backend/guestbook/
       Handler: app.lambda_handler
-      Runtime: nodejs24.x
+      Runtime: nodejs20.x
       Architectures:
         - x86_64
       Events:
@@ -204,17 +226,16 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable
-          DEBUG: "true"
       Policies:
-        - DynamoDBCrudPolicy:
+        - DynamoDBReadPolicy:  # Diese Policy gibt der Lambda-Funktion Leserechte für DynamoDB
             TableName: !Ref MyGuestbookTable
-             
+            
   MyGuestbookPost:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       CodeUri: backend/guestbook/
       Handler: app.lambda_handler
-      Runtime: nodejs24.x
+      Runtime: nodejs20.x
       Architectures:
         - x86_64
       Events:
@@ -227,8 +248,6 @@ Resources:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable
       Policies:
-        - DynamoDBReadPolicy:  # Diese Policy gibt der Lambda-Funktion Schreibrechte für DynamoDB
-            TableName: !Ref MyGuestbookTable
         - DynamoDBWritePolicy:  # Diese Policy gibt der Lambda-Funktion Schreibrechte für DynamoDB
             TableName: !Ref MyGuestbookTable
 
