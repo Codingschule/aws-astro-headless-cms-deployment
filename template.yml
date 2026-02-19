@@ -190,7 +190,7 @@ Resources:
     Properties:
       CodeUri: backend/guestbook/
       Handler: app.lambda_handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Architectures:
         - x86_64
       Events:
@@ -204,16 +204,17 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable
+          DEBUG: "true"
       Policies:
-        - DynamoDBReadPolicy:  # Diese Policy gibt der Lambda-Funktion Leserechte für DynamoDB
+        - DynamoDBCrudPolicy:
             TableName: !Ref MyGuestbookTable
-            
+             
   MyGuestbookPost:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       CodeUri: backend/guestbook/
       Handler: app.lambda_handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Architectures:
         - x86_64
       Events:
@@ -226,6 +227,8 @@ Resources:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable
       Policies:
+        - DynamoDBReadPolicy:  # Diese Policy gibt der Lambda-Funktion Schreibrechte für DynamoDB
+            TableName: !Ref MyGuestbookTable
         - DynamoDBWritePolicy:  # Diese Policy gibt der Lambda-Funktion Schreibrechte für DynamoDB
             TableName: !Ref MyGuestbookTable
 

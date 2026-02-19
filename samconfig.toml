@@ -3,8 +3,9 @@
 version = 0.1
 
 [default.global.parameters]
-stack_name = "sam-astro-cd"
+stack_name = "astro-sam-202-oidc-customres"
 region = "us-east-1"
+profile = "myawsprofile"
 
 [default.build.parameters]
 cached = true
@@ -13,16 +14,6 @@ parallel = true
 [default.validate.parameters]
 lint = true
 
-[default.deploy.parameters]
-capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
-confirm_changeset = false
-#resolve_s3 = true
-stack_name = "astro-sam-202-oidc-customres"
-s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-btkyfgdhnica"
-
-[default.deploy.parameters.parameter_overrides]
-AppName = "cs-itp-ssg-cd-sam"
-AuthorizedGithubRepository = "Codingschule/aws-astro-headless-cms-deployment"
 [default.package.parameters]
 resolve_s3 = true
 
@@ -31,6 +22,18 @@ watch = true
 
 [default.local_start_api.parameters]
 warm_containers = "EAGER"
-
 [default.local_start_lambda.parameters]
 warm_containers = "EAGER"
+
+
+[default.deploy.parameters]
+capabilities = ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
+confirm_changeset = false
+#resolve_s3 = true
+#stack_name = "astro-sam-202-oidc-customres"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-btkyfgdhnica"
+
+[default.deploy.parameters.parameter_overrides]
+AppName = "cs-itp-ssg-cd-sam"
+AuthorizedGithubRepository = "Codingschule/aws-astro-headless-cms-deployment"
+OidcConnectorDeployment = "2"
