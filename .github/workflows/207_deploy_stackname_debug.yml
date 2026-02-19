@@ -1,0 +1,108 @@
+name: Deploy to AWS (OIDC) - Dynamic Stack Outputs
+
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ dev ]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'deploy.yml AND src from'
+        default: 'dev'
+
+jobs:
+  build_and_maybe_deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      bucket_name: ${{ steps.get_outputs.outputs.STACK_S3_BUCKET_NAME }}
+      distribution_id: ${{ steps.get_outputs.outputs.STACK_CLOUDFRONT_DISTRIBUTION_ID }}
+      api_url: ${{ steps.get_outputs.outputs.STACK_GUESTBOOK_API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        if: github.event_name == 'push'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Get Stack Outputs
+        id: get_outputs
+        if: github.event_name == 'push'
+        run: |
+          # Fetch all outputs from CloudFormation stack
+          STACK_OUTPUTS=$(aws cloudformation describe-stacks \
+            --stack-name ${{ vars.AWS_STACK_NAME }} \
+            --query 'Stacks[0].Outputs' \
+            --output json)
+
+          # Extract AWS_DATA JSON and parse it
+          AWS_DATA_JSON=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubAwsData") | .OutputValue')
+          
+          # Extract individual values from JSON
+          EXTRACTED_REGION=$(echo "$AWS_DATA_JSON" | jq -r '.region')
+          EXTRACTED_ROLE=$(echo "$AWS_DATA_JSON" | jq -r '.role')
+          EXTRACTED_STACK_NAME=$(echo "$AWS_DATA_JSON" | jq -r '.stackName')
+
+          # Extract other stack values
+          STACK_S3_BUCKET_NAME=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubS3BucketName") | .OutputValue')
+          STACK_CLOUDFRONT_DISTRIBUTION_ID=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubCloudfrontDistributionId") | .OutputValue')
+          STACK_GUESTBOOK_API_URL=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubBackendGuestbookApi") | .OutputValue')
+
+          # ============================================
+          # TEST OUTPUT: Show all extracted variables
+          # ============================================
+          echo "========================================"
+          echo "AWS_DATA JSON from Stack:"
+          echo "$AWS_DATA_JSON"
+          echo "========================================"
+          echo "Extracted Variables:"
+          echo "  REGION:    $EXTRACTED_REGION"
+          echo "  ROLE:      $EXTRACTED_ROLE"
+          echo "  STACK:     $EXTRACTED_STACK_NAME"
+          echo "  BUCKET:    $STACK_S3_BUCKET_NAME"
+          echo "  CLOUDFRONT: $STACK_CLOUDFRONT_DISTRIBUTION_ID"
+          echo "  API_URL:   $STACK_GUESTBOOK_API_URL"
+          echo "========================================"
+
+          # Set as output variables
+          echo "STACK_S3_BUCKET_NAME=$STACK_S3_BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "STACK_CLOUDFRONT_DISTRIBUTION_ID=$STACK_CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+          echo "STACK_GUESTBOOK_API_URL=$STACK_GUESTBOOK_API_URL" >> $GITHUB_OUTPUT
+          echo "STACK_REGION=$EXTRACTED_REGION" >> $GITHUB_OUTPUT
+          echo "STACK_ROLE=$EXTRACTED_ROLE" >> $GITHUB_OUTPUT
+          echo "STACK_NAME=$EXTRACTED_STACK_NAME" >> $GITHUB_OUTPUT
+
+          # Also set as environment variables for subsequent steps
+          echo "STACK_S3_BUCKET_NAME=$STACK_S3_BUCKET_NAME" >> $GITHUB_ENV
+          echo "STACK_CLOUDFRONT_DISTRIBUTION_ID=$STACK_CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_ENV
+          echo "STACK_GUESTBOOK_API_URL=$STACK_GUESTBOOK_API_URL" >> $GITHUB_ENV
+          echo "STACK_REGION=$EXTRACTED_REGION" >> $GITHUB_ENV
+          echo "STACK_ROLE=$EXTRACTED_ROLE" >> $GITHUB_ENV
+          echo "STACK_NAME=$EXTRACTED_STACK_NAME" >> $GITHUB_ENV
+
+      - name: Install and Build
+        working-directory: ./frontend
+        if: github.event_name == 'push'
+        env:
+          PUBLIC_STACK_GUESTBOOK_API_URL: ${{ env.STACK_GUESTBOOK_API_URL }}
+        run: npm install && npm run build
+
+      - name: Deploy to S3
+        if: github.event_name == 'push'
+        run: aws s3 sync ./frontend/dist s3://${{ env.STACK_S3_BUCKET_NAME }} --delete
+
+      - name: Invalidate CloudFront
+        if: github.event_name == 'push'
+        run: aws cloudfront create-invalidation --distribution-id ${{ env.STACK_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+      - name: Print Guestbook API URL
+        if: github.event_name == 'push'
+        run: |
+          echo "Guestbook API URL: $STACK_GUESTBOOK_API_URL"
