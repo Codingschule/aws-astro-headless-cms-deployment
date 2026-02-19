@@ -5,7 +5,7 @@ Description: |
   Hosting:
   Private Bucket with Policy and OAC-enabled Distribution for authorized GetObject.
   Building:
-  GitubRole trusts Github via OIDC to request tokens for the repository listed
+  GithubRole trusts Github via OIDC to request tokens for the repository listed
   CustomResources:
   The Nested OIDC-Stack creates a CustomResource which ensures the existance of 1 Stack-Independent Account-unique OIDC-Connector.
   This enables this Stack to be deployed multiple times while only 1 OIDC connector exists.
@@ -148,7 +148,7 @@ Resources:
                 AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
 
   # GitHub Actions OIDC Role
-  GitubRole:
+  GithubRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub "${AppName}-github-actions-role"
