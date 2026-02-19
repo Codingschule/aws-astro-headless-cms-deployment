@@ -19,9 +19,9 @@ jobs:
   build_and_maybe_deploy:
     runs-on: ubuntu-latest
     outputs:
-      bucket_name: ${{ steps.get_outputs.outputs.S3_BUCKET_NAME }}
-      distribution_id: ${{ steps.get_outputs.outputs.CLOUDFRONT_DISTRIBUTION_ID }}
-      api_url: ${{ steps.get_outputs.outputs.GUESTBOOK_API_URL }}
+      bucket_name: ${{ steps.get_outputs.outputs.STACK_S3_BUCKET_NAME }}
+      distribution_id: ${{ steps.get_outputs.outputs.STACK_CLOUDFRONT_DISTRIBUTION_ID }}
+      api_url: ${{ steps.get_outputs.outputs.STACK_GUESTBOOK_API_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -43,41 +43,41 @@ jobs:
             --output json)
 
           # Extract individual values using jq
-          S3_BUCKET_NAME=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubS3BucketName") | .OutputValue')
-          CLOUDFRONT_DISTRIBUTION_ID=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubCloudfrontDistributionId") | .OutputValue')
-          GUESTBOOK_API_URL=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="BackendGuestbookApi") | .OutputValue')
+          STACK_S3_BUCKET_NAME=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubS3BucketName") | .OutputValue')
+          STACK_CLOUDFRONT_DISTRIBUTION_ID=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubCloudfrontDistributionId") | .OutputValue')
+          STACK_GUESTBOOK_API_URL=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubBackendGuestbookApi") | .OutputValue')
 
           # Set as output variables
-          echo "S3_BUCKET_NAME=$S3_BUCKET_NAME" >> $GITHUB_OUTPUT
-          echo "CLOUDFRONT_DISTRIBUTION_ID=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
-          echo "GUESTBOOK_API_URL=$GUESTBOOK_API_URL" >> $GITHUB_OUTPUT
+          echo "STACK_S3_BUCKET_NAME=$STACK_S3_BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "STACK_CLOUDFRONT_DISTRIBUTION_ID=$STACK_CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+          echo "STACK_GUESTBOOK_API_URL=$STACK_GUESTBOOK_API_URL" >> $GITHUB_OUTPUT
 
           # Also set as environment variables for subsequent steps
-          echo "S3_BUCKET_NAME=$S3_BUCKET_NAME" >> $GITHUB_ENV
-          echo "CLOUDFRONT_DISTRIBUTION_ID=$CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_ENV
-          echo "GUESTBOOK_API_URL=$GUESTBOOK_API_URL" >> $GITHUB_ENV
+          echo "STACK_S3_BUCKET_NAME=$STACK_S3_BUCKET_NAME" >> $GITHUB_ENV
+          echo "STACK_CLOUDFRONT_DISTRIBUTION_ID=$STACK_CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_ENV
+          echo "STACK_GUESTBOOK_API_URL=$STACK_GUESTBOOK_API_URL" >> $GITHUB_ENV
 
           echo "Retrieved stack outputs:"
-          echo "  S3 Bucket: $S3_BUCKET_NAME"
-          echo "  CloudFront ID: $CLOUDFRONT_DISTRIBUTION_ID"
-          echo "  Guestbook API: $GUESTBOOK_API_URL"
+          echo "  S3 Bucket: $STACK_S3_BUCKET_NAME"
+          echo "  CloudFront ID: $STACK_CLOUDFRONT_DISTRIBUTION_ID"
+          echo "  Guestbook API: $STACK_GUESTBOOK_API_URL"
 
       - name: Install and Build
         working-directory: ./frontend
         if: github.event_name == 'push'
         env:
-          PUBLIC_GUESTBOOK_API_URL: ${{ env.GUESTBOOK_API_URL }}
+          PUBLIC_STACK_GUESTBOOK_API_URL: ${{ env.STACK_GUESTBOOK_API_URL }}
         run: npm install && npm run build
 
       - name: Deploy to S3
         if: github.event_name == 'push'
-        run: aws s3 sync ./frontend/dist s3://${{ env.S3_BUCKET_NAME }} --delete
+        run: aws s3 sync ./frontend/dist s3://${{ env.STACK_S3_BUCKET_NAME }} --delete
 
       - name: Invalidate CloudFront
         if: github.event_name == 'push'
-        run: aws cloudfront create-invalidation --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+        run: aws cloudfront create-invalidation --distribution-id ${{ env.STACK_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
 
       - name: Print Guestbook API URL
         if: github.event_name == 'push'
         run: |
-          echo "Guestbook API URL: $GUESTBOOK_API_URL"
+          echo "Guestbook API URL: $STACK_GUESTBOOK_API_URL"
