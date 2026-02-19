@@ -1,4 +1,4 @@
-name: Deploy to AWS (OIDC) - Dynamic Stack Outputs
+name: 207 Build using Stack Outputs and Deploy to AWS
 
 permissions:
   id-token: write
