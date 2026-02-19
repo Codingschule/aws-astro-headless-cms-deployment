@@ -254,6 +254,9 @@ Resources:
             TableName: !Ref MyGuestbookTable
 
 Outputs:
+  GithubAwsData:
+    Description: "Combined AWS data as JSON for GitHub Actions (region, role, stackname)"
+    Value: !Sub '{"region": "${AWS::Region}", "role": "arn:aws:iam::${AWS::AccountId}:role/${AppName}-github-actions-role", "stackName": "${AWS::StackName}"}'
   GithubS3BucketName:
     Value: !Sub "${MyWebBucket}" 
   GithubCloudfrontDistributionId:
