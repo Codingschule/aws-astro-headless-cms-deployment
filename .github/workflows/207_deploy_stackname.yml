@@ -45,7 +45,7 @@ jobs:
           # Extract individual values using jq
           STACK_S3_BUCKET_NAME=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubS3BucketName") | .OutputValue')
           STACK_CLOUDFRONT_DISTRIBUTION_ID=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubCloudfrontDistributionId") | .OutputValue')
-          STACK_GUESTBOOK_API_URL=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubBackendGuestbookApi") | .OutputValue')
+          STACK_GUESTBOOK_API_URL=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubPublicGuestbookApiUrl") | .OutputValue')
 
           # Set as output variables
           echo "STACK_S3_BUCKET_NAME=$STACK_S3_BUCKET_NAME" >> $GITHUB_OUTPUT
