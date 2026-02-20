@@ -233,9 +233,9 @@ Resources:
     Properties:
       StageName: Prod
       Cors:
-        AllowMethods: ['GET', 'POST', 'OPTIONS']
-        AllowHeaders: ['Content-Type']
-        AllowOrigin: '*'
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+        AllowOrigin: "'*'"
 
   MyGuestbookGetFunc:
     Type: AWS::Serverless::Function
