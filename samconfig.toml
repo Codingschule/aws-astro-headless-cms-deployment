@@ -3,7 +3,7 @@
 version = 0.1
 
 [default.global.parameters]
-stack_name = "astro207a"
+stack_name = "astro207b"
 region = "us-east-1"
 profile = "myawsprofile"
 
@@ -38,4 +38,4 @@ AppName = "cs-itp-ssg-cd-sam"
 AuthorizedGithubRepository = "Codingschule/aws-astro-headless-cms-deployment"
 OidcConnectorDeployment = "2"
 CorsMode = "2" # allow localhost
-AutoDeleteBucket = true
+AutoDeleteBucket = "true"
