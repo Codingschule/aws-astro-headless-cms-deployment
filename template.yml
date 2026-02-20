@@ -20,9 +20,11 @@ Parameters:
     Type: String
     Default: "cs-itp-ssg-cd-sam"
     Description: "AppName, used for BucketName, lowercase only!"
-  AuthorizedGithubRepository: 
+  CorsMode:
     Type: String
-    Default: "Codingschule/aws-astro-headless-cms-deployment"
+    Default: 1
+    Description: "CORS mode: 0=strict, 1=cloudfront (default), 2=cloudfront+local, 3=*"
+    AllowedValues: [0, 1, 2, 3]
   OidcConnectorDeployment: # replaced be CustomResource
     Type: Number
     Default: 0 ## 
@@ -216,7 +218,7 @@ Resources:
         WriteCapacityUnits: 5
 
   MyGuestbookGet:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Type: AWS::Serverless::Function
     Properties:
       CodeUri: backend/guestbook/
       Handler: app.lambda_handler
@@ -225,21 +227,21 @@ Resources:
         - x86_64
       Events:
         IpCheck:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Type: Api
           Properties:
             Path: /guestbook
             Method: get
-            # Auth:
-            #   AuthorizationType: NONE  # Keine Authentifizierung erforderlich
       Environment:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable
+          CORS_MODE: !Ref CorsMode
+          CORS_CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
       Policies:
-        - DynamoDBReadPolicy:  # Diese Policy gibt der Lambda-Funktion Leserechte für DynamoDB
+        - DynamoDBReadPolicy:
             TableName: !Ref MyGuestbookTable
             
   MyGuestbookPost:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Type: AWS::Serverless::Function
     Properties:
       CodeUri: backend/guestbook/
       Handler: app.lambda_handler
@@ -248,15 +250,17 @@ Resources:
         - x86_64
       Events:
         HelloWorld:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Type: Api
           Properties:
             Path: /guestbook
             Method: post
       Environment:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable
+          CORS_MODE: !Ref CorsMode
+          CORS_CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
       Policies:
-        - DynamoDBWritePolicy:  # Diese Policy gibt der Lambda-Funktion Schreibrechte für DynamoDB
+        - DynamoDBWritePolicy:
             TableName: !Ref MyGuestbookTable
 
 Outputs:
