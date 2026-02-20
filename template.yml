@@ -225,7 +225,7 @@ Resources:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
 
-  MyGuestbookGet:
+  MyGuestbookGetFunc:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: backend/guestbook/
@@ -248,7 +248,7 @@ Resources:
         - DynamoDBReadPolicy:
             TableName: !Ref MyGuestbookTable
             
-  MyGuestbookPost:
+  MyGuestbookPostFunc:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: backend/guestbook/
@@ -297,10 +297,10 @@ Outputs:
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook/"
   BackendGuestbookGetFunction:
     Description: "Hello World Lambda Function ARN"
-    Value: !GetAtt MyGuestbookGet.Arn
+    Value: !GetAtt MyGuestbookGetFunc.Arn
   BackendGuestbookPostFunction:
     Description: "Hello World Lambda Function ARN"
-    Value: !GetAtt MyGuestbookPost.Arn
+    Value: !GetAtt MyGuestbookPostFunc.Arn
   # HelloWorldFunctionIamRole:
   #   Description: "Implicit IAM Role created for Hello World function"
   #   Value: !GetAtt HelloWorldFunctionRole.Arn
