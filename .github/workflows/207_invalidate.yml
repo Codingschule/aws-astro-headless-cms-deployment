@@ -26,7 +26,6 @@ jobs:
       # - uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
-        if: github.event_name == 'push'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
@@ -34,7 +33,6 @@ jobs:
 
       - name: Get Stack Outputs
         id: get_outputs
-        if: github.event_name == 'push'
         run: |
           # Fetch all outputs from CloudFormation stack
           STACK_OUTPUTS=$(aws cloudformation describe-stacks \
@@ -64,6 +62,5 @@ jobs:
 
 
       - name: Invalidate CloudFront
-        if: github.event_name == 'push'
         run: aws cloudfront create-invalidation --distribution-id ${{ env.STACK_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
 
