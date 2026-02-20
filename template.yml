@@ -260,8 +260,8 @@ Resources:
             TableName: !Ref MyGuestbookTable
 
 Outputs:
-  GithubAwsData:
-    Description: "Combined AWS data as JSON for GitHub Actions (region, role, stackname)"
+  GithubAwsDataJson:
+    Description: "GH Variable AWS_DATA Combined AWS data as JSON for Actions (region, role, stackname) to fetch all other data"
     Value: !Sub '{"region": "${AWS::Region}", "role": "arn:aws:iam::${AWS::AccountId}:role/${AppName}-${AWS::StackName}-github-actions-role", "stackName": "${AWS::StackName}"}'
   GithubS3BucketName:
     Value: !Sub "${MyWebBucket}" 
