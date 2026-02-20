@@ -14,7 +14,15 @@
 import { DynamoDBClient, PutItemCommand, ScanCommand } from "@aws-sdk/client-dynamodb";
 
 const DEBUG = process.env.DEBUG === 'true';
+const ENABLE_CORS = true; // Toggle CORS headers - hardcoded to always active
 const client = new DynamoDBClient({});
+
+const CORS_HEADERS = ENABLE_CORS ? {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Header-Source': 'app.mjs'
+} : {};
 
 function debugLog(message, data = null) {
   if (!DEBUG) return;
@@ -52,6 +60,16 @@ export const lambda_handler = async (event, context) => {
   const method = event.httpMethod || 'GET';
   debugLog('HTTP Method detected', method);
 
+  // Handle OPTIONS preflight request
+  if (method === 'OPTIONS') {
+    debugLog('=== Handling OPTIONS preflight request ===');
+    return { 
+      statusCode: 204, 
+      headers: CORS_HEADERS, 
+      body: '' 
+    };
+  }
+
   const tableName = process.env.TABLE_NAME;
   debugLog('TABLE_NAME from env', tableName);
 
@@ -59,6 +77,7 @@ export const lambda_handler = async (event, context) => {
     errorLog('TABLE_NAME environment variable is NOT SET');
     return {
       statusCode: 500,
+      headers: CORS_HEADERS,
       body: JSON.stringify({ error: 'TABLE_NAME not set' }),
     };
   }
@@ -74,12 +93,12 @@ export const lambda_handler = async (event, context) => {
       debugLog('Parsed body', body);
     } catch (e) {
       errorLog('JSON parse failed', e.message);
-      return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON' }) };
+      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Invalid JSON' }) };
     }
     const { name, message } = body || {};
     if (!name || !message) {
       errorLog('Missing required fields', { name, message });
-      return { statusCode: 400, body: JSON.stringify({ error: 'Missing name or message' }) };
+      return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: 'Missing name or message' }) };
     }
     const id = Date.now().toString();
     const item = {
@@ -94,11 +113,11 @@ export const lambda_handler = async (event, context) => {
       debugLog('DynamoDB PutItem SUCCESS', { id });
     } catch (e) {
       errorLog('DynamoDB PutItem FAILED', e);
-      return { statusCode: 500, body: JSON.stringify({ error: 'DB write failed' }) };
+      return { statusCode: 500, headers: CORS_HEADERS, body: JSON.stringify({ error: 'DB write failed' }) };
     }
     const response = { id, name, message, createdAt: item.createdAt.S };
     debugLog('POST response', response);
-    return { statusCode: 201, body: JSON.stringify(response) };
+    return { statusCode: 201, headers: CORS_HEADERS, body: JSON.stringify(response) };
   }
 
   // GET
@@ -114,9 +133,9 @@ export const lambda_handler = async (event, context) => {
       createdAt: i.createdAt.S
     }));
     debugLog('GET response', { entryCount: items.length, items });
-    return { statusCode: 200, body: JSON.stringify({ entries: items }) };
+    return { statusCode: 200, headers: CORS_HEADERS, body: JSON.stringify({ entries: items }) };
   } catch (e) {
     errorLog('DynamoDB Scan FAILED', e);
-    return { statusCode: 500, body: JSON.stringify({ error: 'DB read failed' }) };
+    return { statusCode: 500, headers: CORS_HEADERS, body: JSON.stringify({ error: 'DB read failed' }) };
   }
 };
