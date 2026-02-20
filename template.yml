@@ -244,12 +244,24 @@ Resources:
       CodeUri: backend/guestbook/
       Handler: app.lambda_handler
       Events:
-        Guestbook:
+        Guestbook1:
           Type: Api
           Properties:
             RestApiId: !Ref MyApi
             Path: /guestbook
-            Method: ANY
+            Method: POST
+        Guestbook2:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /guestbook
+            Method: GET
+        Guestbook3:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /guestbook
+            Method: OPTIONS
       Environment:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable
