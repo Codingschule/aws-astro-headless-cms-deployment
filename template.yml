@@ -228,6 +228,15 @@ Resources:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
 
+  GuestbookApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: ['GET', 'POST', 'OPTIONS']
+        AllowHeaders: ['Content-Type']
+        AllowOrigin: '*'
+
   MyGuestbookGetFunc:
     Type: AWS::Serverless::Function
     Properties:
@@ -240,19 +249,15 @@ Resources:
         IpCheck:
           Type: Api
           Properties:
+            RestApiId: !Ref GuestbookApi
             Path: /guestbook
             Method: get
-        OptionsPreflight:
-          Type: Api
-          Properties:
-            Path: /guestbook
-            Method: options
       Environment:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable
           CORS_MODE: !Ref CorsMode
           CORS_CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
-          DEBUG: "true"  # hinzufügen
+          DEBUG: "true"
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref MyGuestbookTable
@@ -269,19 +274,15 @@ Resources:
         GuestBookEvent:
           Type: Api
           Properties:
+            RestApiId: !Ref GuestbookApi
             Path: /guestbook
             Method: post
-        OptionsPreflight:
-          Type: Api
-          Properties:
-            Path: /guestbook
-            Method: options
       Environment:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable
           CORS_MODE: !Ref CorsMode
           CORS_CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
-          DEBUG: "true"  # hinzufügen
+          DEBUG: "true"
       Policies:
         - DynamoDBWritePolicy:
             TableName: !Ref MyGuestbookTable
@@ -309,7 +310,7 @@ Outputs:
 
   GithubPublicGuestbookApiUrl:
     Description: "API Gateway endpoint URL"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook/"
+    Value: !Sub "https://${GuestbookApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook/"
   # BackendGuestbookGetFunction:
   #   Description: "Hello World Lambda Function ARN"
   #   Value: !GetAtt MyGuestbookGetFunc.Arn
