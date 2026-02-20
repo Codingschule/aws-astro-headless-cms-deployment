@@ -290,9 +290,13 @@ Outputs:
   # BlockedBucketUrl:
   #   Value: !Sub "https://${MyWebBucket}.s3.${AWS::Region}.amazonaws.com"
 
+  # GithubPublicGuestbookApiUrl:
+  #   Description: "API Gateway endpoint URL"
+  #   Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook/"
   GithubPublicGuestbookApiUrl:
     Description: "API Gateway endpoint URL"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook/"
+    Value: !Sub "https://${GuestbookApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook"
+
   # BackendGuestbookGetFunction:
   #   Description: "Hello World Lambda Function ARN"
   #   Value: !GetAtt MyGuestbookGetFunc.Arn
