@@ -50,7 +50,7 @@
         this.message = '';
 
         try {
-            const response = await fetch('https://api.example.com/guestbook', {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
