@@ -217,7 +217,7 @@ Resources:
   MyGuestbookTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: guestbook
+      TableName: !Sub "${AWS::StackName}-guestbook"
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
