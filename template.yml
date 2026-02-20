@@ -232,10 +232,10 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
-      Cors:
-        AllowMethods: "'GET,POST,OPTIONS'"
-        AllowHeaders: "'Content-Type'"
-        AllowOrigin: "'*'"
+      # Cors:
+      #   AllowMethods: "'GET,POST,OPTIONS'"
+      #   AllowHeaders: "'Content-Type'"
+      #   AllowOrigin: "'*'"
 
   MyGuestbookFunc:
     Type: AWS::Serverless::Function
@@ -244,24 +244,30 @@ Resources:
       CodeUri: backend/guestbook/
       Handler: app.lambda_handler
       Events:
-        Guestbook1:
+        Guestbook:
           Type: Api
           Properties:
             RestApiId: !Ref MyApi
             Path: /guestbook
-            Method: POST
-        Guestbook2:
-          Type: Api
-          Properties:
-            RestApiId: !Ref MyApi
-            Path: /guestbook
-            Method: GET
-        Guestbook3:
-          Type: Api
-          Properties:
-            RestApiId: !Ref MyApi
-            Path: /guestbook
-            Method: OPTIONS
+            Method: ANY
+        # Guestbook1:
+        #   Type: Api
+        #   Properties:
+        #     RestApiId: !Ref MyApi
+        #     Path: /guestbook
+        #     Method: POST
+        # Guestbook2:
+        #   Type: Api
+        #   Properties:
+        #     RestApiId: !Ref MyApi
+        #     Path: /guestbook
+        #     Method: GET
+        # Guestbook3:
+        #   Type: Api
+        #   Properties:
+        #     RestApiId: !Ref MyApi
+        #     Path: /guestbook
+        #     Method: OPTIONS
       Environment:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable
