@@ -1,77 +1,74 @@
 ---
-
+const apiUrl = import.meta.env.PUBLIC_GUESTBOOK_API_URL || '';
 ---
 
-<div
+<div 
     x-data="{
-    entries: [],
-    isLoading: true,
-    errorMessage: '',
-    name: '',
-    message: '',
-    
-    async init() {
-        const apiUrl = import.meta.env.PUBLIC_GUESTBOOK_API_URL;
-        if (!apiUrl) {
-            console.error('PUBLIC_GUESTBOOK_API_URL is not defined');
-            this.errorMessage = 'Configuration error: API URL not set.';
-            return;
-        }
-
-        try {
-            const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error('Failed to fetch entries');
-            this.entries = await response.json();
-        } catch (error) {
-            this.errorMessage = 'Failed to load guestbook entries. Please try again later.';
-            console.error(error);
-        } finally {
-            this.isLoading = false;
-        }
-    },
-
-    async submitForm() {
-        const apiUrl = import.meta.env.PUBLIC_GUESTBOOK_API_URL;
-        if (!this.name || !this.message || !apiUrl) return;
-
-        const newEntry = {
-            name: this.name,
-            message: this.message,
-            date: new Date().toISOString() // Optimistic update date
-        };
-
-        // Optimistic update
-        this.entries.unshift(newEntry);
+        apiUrl: $el.dataset.apiUrl,
+        entries: [],
+        isLoading: true,
+        errorMessage: '',
+        name: '',
+        message: '',
         
-        // Reset form
-        const currentName = this.name;
-        const currentMessage = this.message;
-        this.name = '';
-        this.message = '';
-
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ name: currentName, message: currentMessage })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to submit entry');
-                // Revert optimistic update if needed, but for now we'll just show error
+        async init() {
+            if (!this.apiUrl) {
+                console.error('PUBLIC_GUESTBOOK_API_URL is not defined');
+                this.errorMessage = 'Configuration error: API URL not set.';
+                return;
             }
-        } catch (error) {
-            this.errorMessage = 'Failed to submit entry.';
-            console.error(error);
-            // Ideally remove the optimistically added entry here
-            this.entries.shift();
-            this.name = currentName;
-            this.message = currentMessage;
+
+            try {
+                const response = await fetch(this.apiUrl);
+                if (!response.ok) throw new Error('Failed to fetch entries');
+                const data = await response.json();
+                this.entries = data.entries || [];
+            } catch (error) {
+                this.errorMessage = 'Failed to load guestbook entries. Please try again later.';
+                console.error(error);
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        async submitForm() {
+            if (!this.name || !this.message || !this.apiUrl) return;
+
+            const currentName = this.name;
+            const currentMessage = this.message;
+            
+            // Optimistic update
+            this.entries.unshift({
+                name: currentName,
+                message: currentMessage,
+                createdAt: new Date().toISOString()
+            });
+            
+            // Reset form
+            this.name = '';
+            this.message = '';
+
+            try {
+                const response = await fetch(this.apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name: currentName, message: currentMessage })
+                });
+
+                if (!response.ok) throw new Error('Failed to submit entry');
+            } catch (error) {
+                this.errorMessage = 'Failed to submit entry.';
+                console.error(error);
+                // Revert optimistic update
+                this.entries.shift();
+                this.name = currentName;
+                this.message = currentMessage;
+            }
         }
-    }
-}"
+    }"
+    data-api-url={apiUrl}
     class="guestbook-container"
 >
     <!-- Error Message -->
@@ -88,7 +85,7 @@
 
     <!-- Guestbook Entries -->
     <div x-show="!isLoading" class="entries-list">
-        <template x-for="entry in entries" :key="entry.date">
+        <template x-for="entry in entries" :key="entry.id">
             <div
                 class="entry"
                 style="border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 8px;"
@@ -98,7 +95,7 @@
                 >
                     <strong x-text="entry.name"></strong>
                     <span
-                        x-text="new Date(entry.date).toLocaleDateString()"
+                        x-text="entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : ''"
                         style="color: #666; font-size: 0.9em;"></span>
                 </div>
                 <p x-text="entry.message" style="margin: 0;"></p>
