@@ -240,9 +240,9 @@ Resources:
   MyGuestbookFunc:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
+      CodeUri: backend/guestbook/
       Handler: app.lambda_handler
-      CodeUri: backend/
       Events:
         Guestbook:
           Type: Api
