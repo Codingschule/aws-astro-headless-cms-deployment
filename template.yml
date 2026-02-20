@@ -57,7 +57,7 @@ Resources:
   MyWebBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "${AppName}-pub-dist-${AWS::Region}-${AWS::AccountId}"
+      BucketName: !Sub "${AppName}-frontend-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -81,7 +81,8 @@ Resources:
   IndexHtmlFunction:
     Type: AWS::CloudFront::Function
     Properties:
-      Name: index-html-rewrite
+      # Name: index-html-rewrite
+      Name: !Sub "${AWS::StackName}-${AWS::Region}-index-html-rewrite"
       AutoPublish: true
       FunctionCode: |
         function handler(event) {
@@ -151,7 +152,7 @@ Resources:
   GithubRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${AppName}-github-actions-role"
+      RoleName: !Sub "${AppName}-${AWS::StackName}-github-actions-role"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -261,19 +262,19 @@ Resources:
 Outputs:
   GithubAwsData:
     Description: "Combined AWS data as JSON for GitHub Actions (region, role, stackname)"
-    Value: !Sub '{"region": "${AWS::Region}", "role": "arn:aws:iam::${AWS::AccountId}:role/${AppName}-github-actions-role", "stackName": "${AWS::StackName}"}'
+    Value: !Sub '{"region": "${AWS::Region}", "role": "arn:aws:iam::${AWS::AccountId}:role/${AppName}-${AWS::StackName}-github-actions-role", "stackName": "${AWS::StackName}"}'
   GithubS3BucketName:
     Value: !Sub "${MyWebBucket}" 
   GithubCloudfrontDistributionId:
     Value: !Sub "${CloudFrontDistribution}"
   GithubAwsRoleArn:
-    Value: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AppName}-github-actions-role" 
+    Value: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AppName}-${AWS::StackName}-github-actions-role" 
   GithubAwsRegion:
     Value: !Sub "${AWS::Region}" 
   CloudFrontDomainName:
     Value: !GetAtt CloudFrontDistribution.DomainName
   DebugSyncCommand:
-    Value: !Sub "aws s3 sync ./frontend/dist/ s3://${MyWebBucket} --delete --role-arn arn:aws:iam::${AWS::AccountId}:role/${AppName}-github-actions-role" 
+    Value: !Sub "aws s3 sync ./frontend/dist/ s3://${MyWebBucket} --delete --role-arn arn:aws:iam::${AWS::AccountId}:role/${AppName}-${AWS::StackName}-github-actions-role" 
   # BlockedBucketWebsite:
   #   Value: !Sub "http://${MyWebBucket}.s3-website-${AWS::Region}.amazonaws.com" 
   # BlockedBucketUrl:
