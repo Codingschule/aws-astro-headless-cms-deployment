@@ -280,7 +280,7 @@ Outputs:
   # BlockedBucketUrl:
   #   Value: !Sub "https://${MyWebBucket}.s3.${AWS::Region}.amazonaws.com"
 
-  GithubBackendGuestbookApi:
+  GithubPublicGuestbookApiUrl:
     Description: "API Gateway endpoint URL for Prod stage for Hello World function"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook/"
   BackendGuestbookGetFunction:
