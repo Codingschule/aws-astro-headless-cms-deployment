@@ -1,0 +1,69 @@
+name: 207 invalidate cloudfront (after manual s3 sync)
+
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  # push:
+  #   branches: [ dev ]
+  # pull_request:
+  #   branches: [ dev ]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'deploy.yml AND src from'
+        default: 'dev'
+
+jobs:
+  build_and_maybe_deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      bucket_name: ${{ steps.get_outputs.outputs.STACK_S3_BUCKET_NAME }}
+      distribution_id: ${{ steps.get_outputs.outputs.STACK_CLOUDFRONT_DISTRIBUTION_ID }}
+      api_url: ${{ steps.get_outputs.outputs.STACK_GUESTBOOK_API_URL }}
+    steps:
+      # - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        if: github.event_name == 'push'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Get Stack Outputs
+        id: get_outputs
+        if: github.event_name == 'push'
+        run: |
+          # Fetch all outputs from CloudFormation stack
+          STACK_OUTPUTS=$(aws cloudformation describe-stacks \
+            --stack-name ${{ vars.AWS_STACK_NAME }} \
+            --query 'Stacks[0].Outputs' \
+            --output json)
+
+          # Extract individual values using jq
+          STACK_S3_BUCKET_NAME=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubS3BucketName") | .OutputValue')
+          STACK_CLOUDFRONT_DISTRIBUTION_ID=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubCloudfrontDistributionId") | .OutputValue')
+          STACK_GUESTBOOK_API_URL=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GithubPublicGuestbookApiUrl") | .OutputValue')
+
+          # Set as output variables
+          echo "STACK_S3_BUCKET_NAME=$STACK_S3_BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "STACK_CLOUDFRONT_DISTRIBUTION_ID=$STACK_CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+          echo "STACK_GUESTBOOK_API_URL=$STACK_GUESTBOOK_API_URL" >> $GITHUB_OUTPUT
+
+          # Also set as environment variables for subsequent steps
+          echo "STACK_S3_BUCKET_NAME=$STACK_S3_BUCKET_NAME" >> $GITHUB_ENV
+          echo "STACK_CLOUDFRONT_DISTRIBUTION_ID=$STACK_CLOUDFRONT_DISTRIBUTION_ID" >> $GITHUB_ENV
+          echo "STACK_GUESTBOOK_API_URL=$STACK_GUESTBOOK_API_URL" >> $GITHUB_ENV
+
+          echo "Retrieved stack outputs:"
+          echo "  S3 Bucket: $STACK_S3_BUCKET_NAME"
+          echo "  CloudFront ID: $STACK_CLOUDFRONT_DISTRIBUTION_ID"
+          echo "  Guestbook API: $STACK_GUESTBOOK_API_URL"
+
+
+      - name: Invalidate CloudFront
+        if: github.event_name == 'push'
+        run: aws cloudfront create-invalidation --distribution-id ${{ env.STACK_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
