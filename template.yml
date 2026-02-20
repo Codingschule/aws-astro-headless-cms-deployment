@@ -237,7 +237,7 @@ Resources:
         AllowHeaders: "'Content-Type'"
         AllowOrigin: "'*'"
 
-  MyGuestbookGetFunc:
+  MyGuestbookFunc:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: backend/guestbook/
@@ -246,35 +246,15 @@ Resources:
       Architectures:
         - x86_64
       Events:
-        IpCheck:
+        GetRequest:
           Type: Api
           Properties:
             RestApiId: !Ref GuestbookApi
             Path: /guestbook
             Method: get
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref MyGuestbookTable
-          CORS_MODE: !Ref CorsMode
-          CORS_CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
-          DEBUG: "true"
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref MyGuestbookTable
-            
-  MyGuestbookPostFunc:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: backend/guestbook/
-      Handler: app.lambda_handler
-      Runtime: nodejs20.x
-      Architectures:
-        - x86_64
-      Events:
-        GuestBookEvent:
+        PostRequest:
           Type: Api
           Properties:
-            RestApiId: !Ref GuestbookApi
             Path: /guestbook
             Method: post
       Environment:
@@ -284,6 +264,8 @@ Resources:
           CORS_CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
           DEBUG: "true"
       Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref MyGuestbookTable
         - DynamoDBWritePolicy:
             TableName: !Ref MyGuestbookTable
 
@@ -310,7 +292,7 @@ Outputs:
 
   GithubPublicGuestbookApiUrl:
     Description: "API Gateway endpoint URL"
-    Value: !Sub "https://${GuestbookApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook/"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook/"
   # BackendGuestbookGetFunction:
   #   Description: "Hello World Lambda Function ARN"
   #   Value: !GetAtt MyGuestbookGetFunc.Arn
