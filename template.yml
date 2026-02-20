@@ -242,6 +242,11 @@ Resources:
           Properties:
             Path: /guestbook
             Method: get
+        OptionsPreflight:
+          Type: Api
+          Properties:
+            Path: /guestbook
+            Method: options
       Environment:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable
@@ -266,6 +271,11 @@ Resources:
           Properties:
             Path: /guestbook
             Method: post
+        OptionsPreflight:
+          Type: Api
+          Properties:
+            Path: /guestbook
+            Method: options
       Environment:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable

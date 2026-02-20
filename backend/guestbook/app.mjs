@@ -16,8 +16,8 @@ import { DynamoDBClient, PutItemCommand, ScanCommand } from "@aws-sdk/client-dyn
 const DEBUG = process.env.DEBUG === 'true';
 const client = new DynamoDBClient({});
 
-const corsMode = parseInt(process.env.CORS_MODE || '1');
-const cloudFrontDomain = process.env.CORS_CLOUDFRONT_DOMAIN || '';
+const corsMode = parseInt(process.env.CORS_MODE ?? '', 10) || 1;
+const cloudFrontDomain = process.env.CORS_CLOUDFRONT_DOMAIN ?? '';
 
 function getCorsHeaders(origin) {
   if (corsMode === 0) return {};
