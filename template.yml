@@ -34,10 +34,17 @@ Parameters:
       1: Create it with this Stack - deploying this Stack twice will fail! OIDC-Connectors must be uniqie per Account.
       2: CustomResource - I deploy multiple Instances of this Stack on multiple Accounts and need automation (more overhead, requires IAM CAPACBILITIES for nested stacks)
     AllowedValues: [0,1,2]
+  AutoDeleteBucket:
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    Default: false
 
 Conditions:
   IsOidcNeeded: !Equals [ !Ref OidcConnectorDeployment, "1" ]
   IsCustomOidcNeeded: !Equals [ !Ref OidcConnectorDeployment, "2" ]
+  IsAutoDelete: !Equals [ !Ref AutoDeleteBucket, "true" ]
 
 Resources:
   MyTemporaryOidcCreatorStack:
@@ -58,6 +65,7 @@ Resources:
 
   MyWebBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: !If [IsAutoDelete, Delete, Retain]
     Properties:
       BucketName: !Sub "${AppName}-frontend-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
       PublicAccessBlockConfiguration:
