@@ -16,38 +16,6 @@ import { DynamoDBClient, PutItemCommand, ScanCommand } from "@aws-sdk/client-dyn
 const DEBUG = process.env.DEBUG === 'true';
 const client = new DynamoDBClient({});
 
-const corsMode = parseInt(process.env.CORS_MODE ?? '', 10) || 1;
-const cloudFrontDomain = process.env.CORS_CLOUDFRONT_DOMAIN ?? '';
-
-function getCorsHeaders(origin) {
-  if (corsMode === 0) return {};
-  
-  const allowedOrigins = [];
-  
-  if (corsMode >= 1 && cloudFrontDomain) {
-    allowedOrigins.push(cloudFrontDomain);
-  }
-  if (corsMode >= 2) {
-    allowedOrigins.push('http://localhost:4321', 'http://127.0.0.1:4321');
-  }
-  
-  if (corsMode === 3) {
-    return { 
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    };
-  }
-  
-  if (origin && allowedOrigins.includes(origin)) {
-    return { 
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Headers': 'Content-Type'
-    };
-  }
-  
-  return {};
-}
-
 function debugLog(message, data = null) {
   if (!DEBUG) return;
   if (data) {
@@ -79,18 +47,10 @@ export const lambda_handler = async (event, context) => {
     DEBUG: process.env.DEBUG,
     AWS_REGION: process.env.AWS_REGION,
     AWS_LAMBDA_FUNCTION_NAME: process.env.AWS_LAMBDA_FUNCTION_NAME,
-    CORS_MODE: process.env.CORS_MODE,
-    CORS_CLOUDFRONT_DOMAIN: process.env.CORS_CLOUDFRONT_DOMAIN,
   });
 
   const method = event.httpMethod || 'GET';
-  const origin = event.headers?.origin || event.headers?.Origin || '';
-  const corsHeaders = getCorsHeaders(origin);
-  debugLog('CORS Mode', { corsMode, origin, corsHeaders });
-
-  if (method === 'OPTIONS') {
-    return { statusCode: 204, headers: corsHeaders, body: '' };
-  }
+  debugLog('HTTP Method detected', method);
 
   const tableName = process.env.TABLE_NAME;
   debugLog('TABLE_NAME from env', tableName);
@@ -99,7 +59,6 @@ export const lambda_handler = async (event, context) => {
     errorLog('TABLE_NAME environment variable is NOT SET');
     return {
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ error: 'TABLE_NAME not set' }),
     };
   }
@@ -115,12 +74,12 @@ export const lambda_handler = async (event, context) => {
       debugLog('Parsed body', body);
     } catch (e) {
       errorLog('JSON parse failed', e.message);
-      return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Invalid JSON' }) };
+      return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON' }) };
     }
     const { name, message } = body || {};
     if (!name || !message) {
       errorLog('Missing required fields', { name, message });
-      return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Missing name or message' }) };
+      return { statusCode: 400, body: JSON.stringify({ error: 'Missing name or message' }) };
     }
     const id = Date.now().toString();
     const item = {
@@ -135,11 +94,11 @@ export const lambda_handler = async (event, context) => {
       debugLog('DynamoDB PutItem SUCCESS', { id });
     } catch (e) {
       errorLog('DynamoDB PutItem FAILED', e);
-      return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'DB write failed' }) };
+      return { statusCode: 500, body: JSON.stringify({ error: 'DB write failed' }) };
     }
     const response = { id, name, message, createdAt: item.createdAt.S };
     debugLog('POST response', response);
-    return { statusCode: 201, headers: corsHeaders, body: JSON.stringify(response) };
+    return { statusCode: 201, body: JSON.stringify(response) };
   }
 
   // GET
@@ -155,9 +114,9 @@ export const lambda_handler = async (event, context) => {
       createdAt: i.createdAt.S
     }));
     debugLog('GET response', { entryCount: items.length, items });
-    return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ entries: items }) };
+    return { statusCode: 200, body: JSON.stringify({ entries: items }) };
   } catch (e) {
     errorLog('DynamoDB Scan FAILED', e);
-    return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'DB read failed' }) };
+    return { statusCode: 500, body: JSON.stringify({ error: 'DB read failed' }) };
   }
 };

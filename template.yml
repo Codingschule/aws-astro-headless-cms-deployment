@@ -228,7 +228,7 @@ Resources:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
 
-  GuestbookApi:
+  MyApi:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
@@ -240,27 +240,20 @@ Resources:
   MyGuestbookFunc:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: backend/guestbook/
-      Handler: app.lambda_handler
       Runtime: nodejs20.x
-      Architectures:
-        - x86_64
+      Handler: app.lambda_handler
+      CodeUri: backend/
       Events:
-        GetRequest:
+        Guestbook:
           Type: Api
           Properties:
-            RestApiId: !Ref GuestbookApi
+            RestApiId: !Ref MyApi
             Path: /guestbook
-            Method: get
-        PostRequest:
-          Type: Api
-          Properties:
-            Path: /guestbook
-            Method: post
+            Method: ANY
       Environment:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable
-          CORS_MODE: !Ref CorsMode
+          # CORS_MODE: !Ref CorsMode
           CORS_CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
           DEBUG: "true"
       Policies:
@@ -295,7 +288,7 @@ Outputs:
   #   Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook/"
   GithubPublicGuestbookApiUrl:
     Description: "API Gateway endpoint URL"
-    Value: !Sub "https://${GuestbookApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook"
+    Value: !Sub "https://${MyApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook"
 
   # BackendGuestbookGetFunction:
   #   Description: "Hello World Lambda Function ARN"
