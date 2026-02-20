@@ -16,7 +16,7 @@ on:
         default: 'dev'
 
 jobs:
-  build_and_maybe_deploy:
+  invalidate_from_stack:
     runs-on: ubuntu-latest
     outputs:
       bucket_name: ${{ steps.get_outputs.outputs.STACK_S3_BUCKET_NAME }}
