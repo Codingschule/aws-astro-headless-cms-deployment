@@ -5,7 +5,7 @@ Description: |
   Hosting:
   Private Bucket with Policy and OAC-enabled Distribution for authorized GetObject.
   Building:
-  GitubRole trusts Github via OIDC to request tokens for the repository listed
+  GithubRole trusts Github via OIDC to request tokens for the repository listed
   CustomResources:
   The Nested OIDC-Stack creates a CustomResource which ensures the existance of 1 Stack-Independent Account-unique OIDC-Connector.
   This enables this Stack to be deployed multiple times while only 1 OIDC connector exists.
@@ -20,9 +20,11 @@ Parameters:
     Type: String
     Default: "cs-itp-ssg-cd-sam"
     Description: "AppName, used for BucketName, lowercase only!"
-  AuthorizedGithubRepository: 
+  CorsMode:
     Type: String
-    Default: "Codingschule/aws-astro-headless-cms-deployment"
+    Default: 1
+    Description: "CORS mode: 0=strict, 1=cloudfront (default), 2=cloudfront+local, 3=*"
+    AllowedValues: [0, 1, 2, 3]
   OidcConnectorDeployment: # replaced be CustomResource
     Type: Number
     Default: 0 ## 
@@ -32,10 +34,20 @@ Parameters:
       1: Create it with this Stack - deploying this Stack twice will fail! OIDC-Connectors must be uniqie per Account.
       2: CustomResource - I deploy multiple Instances of this Stack on multiple Accounts and need automation (more overhead, requires IAM CAPACBILITIES for nested stacks)
     AllowedValues: [0,1,2]
+  AutoDeleteBucket:
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    Default: false
+  AuthorizedGithubRepository: 
+    Type: String
+    Default: "Codingschule/aws-astro-headless-cms-deployment"
 
 Conditions:
   IsOidcNeeded: !Equals [ !Ref OidcConnectorDeployment, "1" ]
   IsCustomOidcNeeded: !Equals [ !Ref OidcConnectorDeployment, "2" ]
+  IsAutoDelete: !Equals [ !Ref AutoDeleteBucket, "true" ]
 
 Resources:
   MyTemporaryOidcCreatorStack:
@@ -56,8 +68,9 @@ Resources:
 
   MyWebBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: !If [IsAutoDelete, Delete, Retain]
     Properties:
-      BucketName: !Sub "${AppName}-pub-dist-${AWS::Region}-${AWS::AccountId}"
+      BucketName: !Sub "${AppName}-frontend-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -77,6 +90,28 @@ Resources:
         OriginAccessControlOriginType: s3
         SigningBehavior: always
         SigningProtocol: sigv4
+
+  IndexHtmlFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      # Name: index-html-rewrite
+      Name: !Sub "${AWS::StackName}-${AWS::Region}-index-html-rewrite"
+      AutoPublish: true
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+          if (!uri.includes('.') && !uri.endsWith('/')) {
+            request.uri = uri + '/';
+          }
+          if (uri.endsWith('/')) {
+            request.uri = uri + 'index.html';
+          }
+          return request;
+        }
+      FunctionConfig:
+        Comment: Rewrite directory paths to index.html
+        Runtime: cloudfront-js-1.0
 
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
@@ -101,6 +136,9 @@ Resources:
             - HEAD
           Compress: true
           CachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6"
+          FunctionAssociations:
+            - FunctionARN: !Ref IndexHtmlFunction
+              EventType: viewer-request
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
         HttpVersion: http2
@@ -124,10 +162,10 @@ Resources:
                 AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
 
   # GitHub Actions OIDC Role
-  GitubRole:
+  GithubRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${AppName}-github-actions-role"
+      RoleName: !Sub "${AppName}-${AWS::StackName}-github-actions-role"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -168,13 +206,18 @@ Resources:
                 Action:
                   - cloudfront:CreateInvalidation
                 Resource: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                Resource: !Ref "AWS::StackId"
+                #Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*"
 
 ###############################################################################
 #Resources: # BACKEND #
   MyGuestbookTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: guestbook
+      TableName: !Sub "${AWS::StackName}-guestbook"
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -185,80 +228,92 @@ Resources:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
 
-  MyGuestbookGet:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+  MyApi:
+    Type: AWS::Serverless::Api
     Properties:
+      StageName: Prod
+      # Cors:
+      #   AllowMethods: "'GET,POST,OPTIONS'"
+      #   AllowHeaders: "'Content-Type'"
+      #   AllowOrigin: "'*'"
+
+  MyGuestbookFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs24.x
       CodeUri: backend/guestbook/
       Handler: app.lambda_handler
-      Runtime: nodejs24.x
-      Architectures:
-        - x86_64
       Events:
-        IpCheck:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+        Guestbook:
+          Type: Api
           Properties:
+            RestApiId: !Ref MyApi
             Path: /guestbook
-            Method: get
-            # Auth:
-            #   AuthorizationType: NONE  # Keine Authentifizierung erforderlich
+            Method: ANY
+        # Guestbook1:
+        #   Type: Api
+        #   Properties:
+        #     RestApiId: !Ref MyApi
+        #     Path: /guestbook
+        #     Method: POST
+        # Guestbook2:
+        #   Type: Api
+        #   Properties:
+        #     RestApiId: !Ref MyApi
+        #     Path: /guestbook
+        #     Method: GET
+        # Guestbook3:
+        #   Type: Api
+        #   Properties:
+        #     RestApiId: !Ref MyApi
+        #     Path: /guestbook
+        #     Method: OPTIONS
       Environment:
         Variables:
           TABLE_NAME: !Ref MyGuestbookTable
+          # CORS_MODE: !Ref CorsMode
+          CORS_CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
           DEBUG: "true"
       Policies:
-        - DynamoDBCrudPolicy:
+        - DynamoDBReadPolicy:
             TableName: !Ref MyGuestbookTable
-             
-  MyGuestbookPost:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-    Properties:
-      CodeUri: backend/guestbook/
-      Handler: app.lambda_handler
-      Runtime: nodejs24.x
-      Architectures:
-        - x86_64
-      Events:
-        HelloWorld:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-          Properties:
-            Path: /guestbook
-            Method: post
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref MyGuestbookTable
-      Policies:
-        - DynamoDBReadPolicy:  # Diese Policy gibt der Lambda-Funktion Schreibrechte für DynamoDB
-            TableName: !Ref MyGuestbookTable
-        - DynamoDBWritePolicy:  # Diese Policy gibt der Lambda-Funktion Schreibrechte für DynamoDB
+        - DynamoDBWritePolicy:
             TableName: !Ref MyGuestbookTable
 
 Outputs:
+  GithubAwsDataJson:
+    Description: "GH Variable AWS_DATA Combined AWS data as JSON for Actions (region, role, stackname) to fetch all other data"
+    Value: !Sub '{"region": "${AWS::Region}", "role": "arn:aws:iam::${AWS::AccountId}:role/${AppName}-${AWS::StackName}-github-actions-role", "stackName": "${AWS::StackName}"}'
   GithubS3BucketName:
     Value: !Sub "${MyWebBucket}" 
   GithubCloudfrontDistributionId:
     Value: !Sub "${CloudFrontDistribution}"
   GithubAwsRoleArn:
-    Value: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AppName}-github-actions-role" 
+    Value: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AppName}-${AWS::StackName}-github-actions-role" 
   GithubAwsRegion:
     Value: !Sub "${AWS::Region}" 
   CloudFrontDomainName:
     Value: !GetAtt CloudFrontDistribution.DomainName
   DebugSyncCommand:
-    Value: !Sub "aws s3 sync ./frontend/dist/ s3://${MyWebBucket} --delete --role-arn arn:aws:iam::${AWS::AccountId}:role/${AppName}-github-actions-role" 
+    Value: !Sub "aws s3 sync ./frontend/dist/ s3://${MyWebBucket} --delete --role-arn arn:aws:iam::${AWS::AccountId}:role/${AppName}-${AWS::StackName}-github-actions-role" 
   # BlockedBucketWebsite:
   #   Value: !Sub "http://${MyWebBucket}.s3-website-${AWS::Region}.amazonaws.com" 
   # BlockedBucketUrl:
   #   Value: !Sub "https://${MyWebBucket}.s3.${AWS::Region}.amazonaws.com"
 
-  BackendGuestbookApi:
-    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook/"
-  BackendGuestbookGetFunction:
-    Description: "Hello World Lambda Function ARN"
-    Value: !GetAtt MyGuestbookGet.Arn
-  BackendGuestbookPostFunction:
-    Description: "Hello World Lambda Function ARN"
-    Value: !GetAtt MyGuestbookPost.Arn
+  # GithubPublicGuestbookApiUrl:
+  #   Description: "API Gateway endpoint URL"
+  #   Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook/"
+  GithubPublicGuestbookApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${MyApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/guestbook"
+
+  # BackendGuestbookGetFunction:
+  #   Description: "Hello World Lambda Function ARN"
+  #   Value: !GetAtt MyGuestbookGetFunc.Arn
+  # BackendGuestbookPostFunction:
+  #   Description: "Hello World Lambda Function ARN"
+  #   Value: !GetAtt MyGuestbookPostFunc.Arn
   # HelloWorldFunctionIamRole:
   #   Description: "Implicit IAM Role created for Hello World function"
   #   Value: !GetAtt HelloWorldFunctionRole.Arn
